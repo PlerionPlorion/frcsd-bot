@@ -6,5 +6,7 @@
 		"discord.js": "^14.15.3",
 		"dotenv": "^16.4.5"
 	},
-	"type": "module"
+	"devDependencies": {
+		"eslint": "^9.8.0"
+	}
 }
