@@ -32,39 +32,18 @@ for (const folder of commandFolders) {
 	}
 }
 
-client.once(Events.Ready, () => {
-	console.log('Ready!');
-});
+const eventsPath = path.join(__dirname, 'events');
+const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
-client.on(Events.MessageCreate, async message => {
-	if (!message.content.startsWith(prefix) || message.author.bot) return;
-
-	const args = message.content.slice(prefix.length).trim().split(/ +/);
-	const commandName = args.shift().toLowerCase();
-
-	const command = client.commands.get(commandName)
-		|| client.commands.find(cmd => cmd.data.aliases && cmd.data.aliases.includes(commandName));
-
-	if (!command) return;
-
-	try {
-		await command.execute(message, args);
-	} catch (error) {
-		console.error(error);
-		await message.reply('There was an error trying to execute that command!');
-	}
-});
-
-client.on(Events.GuildMemberAdd, async member => {
-	console.log(`New member joined: ${member.user.tag}`);
-	
-	const channel = member.guild.channels.cache.find(channel => channel.name === 'general');
-	if (channel) {
-		await channel.send(`Welcome to the server, ${member.user.tag}!`);
+for (const file of eventFiles) {
+	const filePath = path.join(eventsPath, file);
+	const event = require(filePath);
+	if (event.once) {
+		client.once(event.name, (...args) => event.execute(...args));
 	} else {
-		console.error('General channel not found');
+		client.on(event.name, (...args) => event.execute(...args));
 	}
-});
+}
 
 // Log in to Discord with your client's token
 client.login(token);
