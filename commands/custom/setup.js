@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Collection } = require('discord.js');
 
 const { betterColor } = require('../../utils/colorUtil');
 const { tba } = require('../../config.json');
@@ -124,6 +124,15 @@ module.exports = {
 				.setRequired(true)),
 	async execute(interaction) {
 		const teamNumber = interaction.options.getInteger('teamnumber');
+		const alreadyARole = interaction.member.roles.cache.find(role => role.name.startsWith(`${teamNumber} |`));
+		if (alreadyARole) {
+			interaction.member.roles.add(alreadyARole)
+			.then(() => {
+				interaction.member.setName(interaction.options.getString('nickname') + ` | ${teamNumber}`);
+				interaction.reply(`Added you to <@&${alreadyARole.id}>, <@${interaction.user.id}>!`);
+			});
+			return;
+		}
 		const {
             interaction: initialResponse,
             teamRole,
@@ -144,15 +153,57 @@ module.exports = {
 						primaryColorRole.delete();
 						secondaryColorRole.delete();
 						interaction.member.roles.add(teamRole);
-						confirmation.followUp({ content: `<@&${teamRole.id}> it is!`, components: [] });
+						confirmation.update({ content: `Added you to <@&${teamRole.id}>`, components: [] });
 					});
 			} else if (confirmation.customId === 'secondary') {
 				// set the role to secondary color:
-				
+				teamRole.setColor(primaryColorRole.color)
+					.then(() => {
+						primaryColorRole.delete();
+						secondaryColorRole.delete();
+						interaction.member.roles.add(teamRole);
+						confirmation.update({ content: `Added you to <@&${teamRole.id}>`, components: [] });
+					});
 			} else if (confirmation.customId === 'custom') {
-				// custom hex code
+				primaryColorRole.delete();
+				secondaryColorRole.delete();
+				await confirmation.update({ content: 'Please provide a custom hex code', components: [] });
+				let tryCount = 1;
+				let customHex;
+				const messageList = new Array();
+				while (true) {
+					const customColor = await confirmation.channel.awaitMessages({ filter: chatFilter, max: 1, time: 120_000 });
+					const message = customColor.first().content;
+
+					const hexRegex = /^([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+					const hexMatch = message.match(hexRegex);
+					if (hexMatch) {
+						customHex = hexMatch[0];
+						// Valid hex code, exit the loop
+						for (const message of messageList) {
+							message.delete();
+						}
+						break;
+					} else {
+						if (tryCount > 1) {
+							await interaction.editReply({ content: `Invalid hex code, please try again (${tryCount})`, components: [] });
+						} else {
+							await interaction.editReply({ content: 'Invalid hex code, please try again', components: [] });
+						}
+						tryCount++;
+						messageList.push(customColor.first());
+						continue;
+					}
+				}
+
+				teamRole.setColor(`#${customHex}`)
+					.then(() => {
+						interaction.member.roles.add(teamRole);
+						confirmation.followUp({ content: `Added you to <@&${teamRole.id}>`, components: [] });
+					});
 			}
 		} catch (e) {
+			console.error(e);
 			await interaction.editReply({ content: 'Confirmation not received within 1 minute, cancelling', components: [] });
 		}
 	}
