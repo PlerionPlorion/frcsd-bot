@@ -4,6 +4,58 @@ const { betterColor } = require('../utils/colorUtil');
 const baseTbaUrl = 'https://www.thebluealliance.com/api/v3/team/frc';
 const baseColorUrl = 'https://api.frc-colors.com/v1/team/';
 
+
+async function fetchTeamData(number) {
+    const tbaUrl = `${baseTbaUrl}${number}`;
+    const response = await fetch(tbaUrl, options);
+    return response.json();
+}
+
+async function fetchTeamColors(number) {
+	const fetch = (await import('node-fetch')).default;
+    const colorUrl = `${baseColorUrl}${number}`;
+    const response = await fetch(colorUrl);
+    return response.json();
+}
+
+async function handleRoleAssignment(message, teamNumber) {
+    const role = message.guild.roles.cache.find(role => role.name.startsWith(`${teamNumber} |`));
+    if (role) {
+        message.channel.send(`I know team <@&${role.id}>!`);
+		try {
+			if (message.member.roles.cache.has(role.id)) {
+				message.member.roles.remove(role);
+			} else {
+				message.member.roles.add(role);
+			}
+		} catch (error) {
+			console.error('Error modifying role. Does it exist?', error);
+		}
+    } else {
+        const teamData = await fetchTeamData(teamNumber);
+        const teamColors = await fetchTeamColors(teamNumber);
+        const teamName = teamData.nickname;
+        const primaryColor = teamColors.primaryHex;
+        const secondaryColor = teamColors.secondaryHex;
+        
+        if (teamName && primaryColor) {
+            const { primaryColorRole, secondaryColorRole } = await createRoles(
+                message,
+                teamNumber,
+                teamName,
+                primaryColor,
+                secondaryColor
+            );
+            const buttonMessage = createButtonMessage(
+                primaryColorRole,
+                secondaryColorRole
+            );
+            await message.channel.send(buttonMessage);
+
+        }
+    }
+}
+
 async function createRoles(message, number, teamName, primaryColor, secondaryColor) {
     try {
         const primaryColorRole = await message.guild.roles.create({
@@ -48,7 +100,6 @@ function createButtonMessage(primaryColorRole, secondaryColorRole) {
     };
 }
 
-
 const options = {
 	method: 'GET',
 	headers: {
@@ -58,62 +109,20 @@ const options = {
 };
 
 module.exports = {
-	name: Events.MessageCreate,
-	async execute(message) {
-		if (message.author.bot) {
-			return;
-		}
+    name: Events.MessageCreate,
+    async execute(message) {
+        return;
+        if (message.author.bot) {
+            return;
+        }
 
-		const regex = /\b\d{1,5}\b/g;
-		const matches = message.content.match(regex);
+        const regex = /\b\d{1,5}\b/g;
+        const matches = message.content.match(regex);
 
-		if (matches) {
-			matches.forEach(async number => {
-				const role = message.guild.roles.cache.find(role => role.name.startsWith(`${number} |`));
-				
-				if (role) {
-					message.channel.send(`I know team <@&${role.id}>!`);
-					
-					if (message.member.roles.cache.has(role.id)) {
-						message.member.roles.remove(role);
-					} else {
-						message.member.roles.add(role);
-					}
-				} else {
-					const tbaUrl = `${baseTbaUrl}${number}`;
-					const fetch = (await import('node-fetch')).default;
-					const response = await fetch(tbaUrl, options);
-					const data = await response.json();
-					const teamName = data.nickname;
-
-					// get the team's colors from frc-colors API
-					const colorUrl = `${baseColorUrl}${number}`;
-					const colorResponse = await fetch(colorUrl);
-					const colorData = await colorResponse.json();
-					const primaryColor = colorData.primaryHex;
-					const secondaryColor = colorData.secondaryHex;
-
-					if (teamName && primaryColor) {
-						// make a role with that color and team name formatted "number | teamName"
-						// and assign it to the user
-						console.log(`Primaty color: ${primaryColor}, Better: ${betterColor(primaryColor)}`);
-						message.guild.roles.create({
-							name: `${number} | ${teamName}`,
-							color: "#000000",
-						}).then(role => {
-							message.member.roles.add(role);
-							message.channel.send(`<@&${role.id}> it is! Now, it's time to choose a color.`);
-						});
-
-						// make a primary color and secondary color role
-						const { primaryColorRole, secondaryColorRole } = await createRoles(message, number, teamName, primaryColor, secondaryColor);
-                        const buttonMessage = createButtonMessage(primaryColorRole, secondaryColorRole);
-
-                        await message.channel.send(buttonMessage);
-					
-					}
-				}
-			});
-		}
-	},
+        if (matches) {
+            matches.forEach(async number => {
+                await handleRoleAssignment(message, number);
+            });
+        }
+    }
 };
