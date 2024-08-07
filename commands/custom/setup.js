@@ -5,9 +5,33 @@ const { tba } = require('../../config.json');
 const baseTbaUrl = 'https://www.thebluealliance.com/api/v3/team/frc';
 const baseColorUrl = 'https://api.frc-colors.com/v1/team/';
 
+function handleMessages() {
+	const embed = {
+		"embeds": [
+		  {
+			"id": 196151257,
+			"title": "Team Picker",
+			"description": "@Patribots",
+			"color": 2326507,
+			"fields": [
+			  {
+				"id": 472281785,
+				"name": "Step 1: Select Color",
+				"value": "@primary\n@secondary\nA Custom Hex?",
+				"inline": false
+			  }
+			],
+			"thumbnail": {
+			  "url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
+			}
+		  }
+		],
+	  };
+}
+
 async function fetchTeamData(number) {
     const fetch = (await import('node-fetch')).default;
-    const tbaUrl = `${baseTbaUrl}${number}`;
+    const tbaUrl = `${baseTbaUrl}${number}/simple`;
     const response = await fetch(tbaUrl, {
         method: 'GET',
         headers: {
@@ -48,7 +72,7 @@ async function createRoles(interaction, number, teamName, primaryColor, secondar
     }
 }
 
-function createButtonMessage(teamRole, primaryColorRole, secondaryColorRole) {
+function createButtonMessage(teamNumber, teamRole, primaryColorRole, secondaryColorRole) {
 
     const primaryButton = new ButtonBuilder()
         .setCustomId('primary')
@@ -69,8 +93,27 @@ function createButtonMessage(teamRole, primaryColorRole, secondaryColorRole) {
         .addComponents(primaryButton, secondaryButton, customButton);
 
     return {
-        content: `<@&${teamRole.id}> it is! Now, it's time to choose a color.\nWould you like:\n<@&${primaryColorRole.id}> \n<@&${secondaryColorRole.id}> \nA custom hex?`,
+        // content: `<@&${teamRole.id}> it is! Now, it's time to choose a color.\nWould you like:\n<@&${primaryColorRole.id}> \n<@&${secondaryColorRole.id}> \nA custom hex?`,
         components: [row],
+		embeds: [
+			{
+			  "id": 196151257,
+			  "title": "Team Assignment",
+			  "description": `Welcome <@&${teamRole.id}>!\nYou are the first of your team to join FRCSD`,
+			  "color": `${primaryColorRole.color}`,
+			  "fields": [
+				{
+				  "id": 472281785,
+				  "name": "Select Color:",
+				  "value": `<@&${primaryColorRole.id}>\n<@&${secondaryColorRole.id}>\nA Custom Hex?`,
+				  "inline": false
+				}
+			  ],
+			  "thumbnail": {
+				"url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
+			  }
+			}
+		  ],
     };
 }
 
@@ -82,16 +125,16 @@ async function setNickname(member, nickname, teamNumber) {
     }
 }
 
-async function handleRoleAssignment(interaction, number) {
-    const teamData = await fetchTeamData(number);
-    const teamColors = await fetchTeamColors(number);
+async function handleRoleAssignment(interaction, teamNumber) {
+    const teamData = await fetchTeamData(teamNumber);
+    const teamColors = await fetchTeamColors(teamNumber);
     const teamName = teamData.nickname;
     const primaryColor = teamColors.primaryHex;
     const secondaryColor = teamColors.secondaryHex;
 
     if (teamName && primaryColor) {
-        const { teamRole, primaryColorRole, secondaryColorRole } = await createRoles(interaction, number, teamName, primaryColor, secondaryColor);
-        const buttonMessage = createButtonMessage(teamRole, primaryColorRole, secondaryColorRole);
+        const { teamRole, primaryColorRole, secondaryColorRole } = await createRoles(interaction, teamNumber, teamName, primaryColor, secondaryColor);
+        const buttonMessage = createButtonMessage(teamNumber, teamRole, primaryColorRole, secondaryColorRole);
         return {
             interaction: await interaction.reply(buttonMessage),
             teamRole,
@@ -107,11 +150,11 @@ async function handleRoleAssignment(interaction, number) {
     }
 }
 
-async function addExistingRole(interaction, role, nickname, teamNumber) {
+async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
     try {
-        await interaction.member.roles.add(role.id);
+        await interaction.member.roles.add(teamRole.id);
         await setNickname(interaction.member, nickname, teamNumber);
-        await interaction.reply(`Added you to <@&${role.id}>, <@${interaction.user.id}>!`);
+        await interaction.reply(`Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`);
     } catch (error) {
         console.error('Error adding existing role:', error);
         await interaction.reply('There was an error adding you to the existing role.');
@@ -123,7 +166,7 @@ async function handleConfirmation(interaction, initialResponse, teamRole, primar
     const chatFilter = m => m.author.id === interaction.user.id;
 
     try {
-        const confirmation = await initialResponse.awaitMessageComponent({ filter: collectorFilter, time: 60_000 });
+        const confirmation = await initialResponse.awaitMessageComponent({ filter: collectorFilter, time: 120_000 });
 
         if (confirmation.customId === 'primary') {
             await setRoleColor(interaction, teamRole, primaryColorRole, secondaryColorRole, teamNumber, nickname, confirmation);
@@ -134,7 +177,7 @@ async function handleConfirmation(interaction, initialResponse, teamRole, primar
         }
     } catch (e) {
         console.error(e);
-        await interaction.editReply({ content: 'Confirmation not received within 1 minute, cancelling', components: [] });
+        await interaction.editReply({ content: 'Something went wrong (perhaps a timeout?). Try again!', components: [], embeds: [] });
     }
 }
 
@@ -144,13 +187,44 @@ async function setRoleColor(interaction, teamRole, colorRole, otherColorRole, te
     await otherColorRole.delete();
     await interaction.member.roles.add(teamRole);
     await setNickname(interaction.member, nickname, teamNumber);
-    await confirmation.update({ content: `Added you to <@&${teamRole.id}>`, components: [] });
+    await confirmation.update({ content: ``, components: [], embeds: [
+		{
+			"id": 196151257,
+			"title": "Team Assignment",
+			"description": `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
+			"color": `${teamRole.color}`,
+			"fields": [],
+			"thumbnail": {
+			  "url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
+			}
+		  }
+	]});
 }
 
 async function handleCustomColor(interaction, teamRole, primaryColorRole, secondaryColorRole, teamNumber, nickname, confirmation, chatFilter) {
     await primaryColorRole.delete();
     await secondaryColorRole.delete();
-    await confirmation.update({ content: 'Please send a custom hex code in the channel :)', components: [] });
+    await confirmation.update({ content: '', components: [], embeds:
+		[
+			{
+				"id": 196151257,
+				"title": "Custom Color",
+				"description": `Please enter a hex code for the color you\nwould like to use for <@&${teamRole.id}>`,
+				"color": `${teamRole.color}`,
+				"fields": [
+					{
+						"id": 472281785,
+						"name": "",
+						"value": "Accepted formats are **#RRGGBB**, **RRGGBB**, **#RGB**, and **RGB**",
+						"inline": false
+					}
+				],
+				"thumbnail": {
+				  "url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
+				}
+			}
+		]
+	 });
 
     let tryCount = 1;
     let customHex;
@@ -169,14 +243,54 @@ async function handleCustomColor(interaction, teamRole, primaryColorRole, second
 			}
 			customHex = customHex.padEnd(6, customHex);
 		
-            await interaction.editReply({ content: `Setting color to #${customHex}`, components: [] });
+			const customHexInt = parseInt(customHex, 16);
+
+			await interaction.editReply({ content: ``, components: [], embeds:
+				[
+					{
+						"id": 196151257,
+						"title": "Custom Color",
+						"description": `Please enter a hex code for the color you\nwould like to use for <@&${teamRole.id}>`,
+						"color": `${customHexInt}`,
+						"fields": [
+							{
+								"id": 472281785,
+								"name": `Setting color to #${customHex}`,
+								"value": "",
+								"inline": false
+							}
+						],
+						"thumbnail": {
+						  "url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
+						}
+					}
+				]});
             await customColor.first().delete();
             for (const msg of messageList) {
                 await msg.delete();
             }
             break;
         } else {
-            await interaction.editReply({ content: `Invalid hex code, please try again (${tryCount})`, components: [] });
+            await interaction.editReply({ content: ``, components: [], embeds:
+				[
+					{
+						"id": 196151257,
+						"title": "Custom Color",
+						"description": `Please enter a hex code for the color you\nwould like to use for <@&${teamRole.id}>`,
+						"color": `${customHexInt}`,
+						"fields": [
+							{
+								"id": 472281785,
+								"name": `**Invalid hex code, please try again (${tryCount})**`,
+								"value": "Accepted formats are **#RRGGBB**, **RRGGBB**, **#RGB**, and **RGB**",
+								"inline": false
+							}
+						],
+						"thumbnail": {
+						  "url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
+						}
+					}
+				]});
             tryCount++;
             messageList.push(customColor.first());
         }
@@ -185,7 +299,7 @@ async function handleCustomColor(interaction, teamRole, primaryColorRole, second
     await teamRole.setColor(`#${customHex}`);
     await interaction.member.roles.add(teamRole);
     await setNickname(interaction.member, nickname, teamNumber);
-    await confirmation.followUp({ content: `Added you to <@&${teamRole.id}>`, components: [] });
+    await confirmation.followUp({ content: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`, components: [] });
 }
 
 module.exports = {
