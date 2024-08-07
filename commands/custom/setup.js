@@ -89,8 +89,13 @@ function createButtonMessage(teamNumber, teamRole, primaryColorRole, secondaryCo
         .setLabel('Custom')
         .setStyle(ButtonStyle.Secondary);
 
+	const cancelButton = new ButtonBuilder()
+		.setCustomId('cancel')
+		.setLabel('Cancel')
+		.setStyle(ButtonStyle.Danger);
+
     const row = new ActionRowBuilder()
-        .addComponents(primaryButton, secondaryButton, customButton);
+        .addComponents(primaryButton, secondaryButton, customButton, cancelButton);
 
     return {
         // content: `<@&${teamRole.id}> it is! Now, it's time to choose a color.\nWould you like:\n<@&${primaryColorRole.id}> \n<@&${secondaryColorRole.id}> \nA custom hex?`,
@@ -154,10 +159,23 @@ async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
     try {
         await interaction.member.roles.add(teamRole.id);
         await setNickname(interaction.member, nickname, teamNumber);
-        await interaction.reply(`Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`);
+        return await interaction.reply({
+            embeds: [
+                {
+                    id: 196151257,
+                    title: "Team Assignment",
+                    description: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
+                    color: `${teamRole.color}`,
+                    fields: [],
+                    thumbnail: {
+                        url: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+                    },
+                },
+            ],
+        });
     } catch (error) {
         console.error('Error adding existing role:', error);
-        await interaction.reply('There was an error adding you to the existing role.');
+        return await interaction.reply('There was an error adding you to the existing role.');
     }
 }
 
@@ -174,10 +192,51 @@ async function handleConfirmation(interaction, initialResponse, teamRole, primar
             await setRoleColor(interaction, teamRole, secondaryColorRole, primaryColorRole, teamNumber, nickname, confirmation);
         } else if (confirmation.customId === 'custom') {
             await handleCustomColor(interaction, teamRole, primaryColorRole, secondaryColorRole, teamNumber, nickname, confirmation, chatFilter);
-        }
+        } else if (confirmation.customId === 'cancel') {
+			await interaction.member.roles.remove(teamRole);
+			await teamRole.delete();
+			await primaryColorRole.delete();
+			await secondaryColorRole.delete();
+			await confirmation.update({ content: '', components: [], embeds: [
+				{
+					"id": 196151257,
+					"title": "Operation Cancelled",
+					"description": `Run /setup to try again`,
+					"color": '16711680',
+					"fields": [],
+					"thumbnail": {
+					  "url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
+					}
+				  }
+			]});
+		}
     } catch (e) {
         console.error(e);
-        await interaction.editReply({ content: 'Something went wrong (perhaps a timeout?). Try again!', components: [], embeds: [] });
+		await interaction.member.roles.remove(teamRole);
+		await teamRole.delete();
+		await primaryColorRole.delete();
+		await secondaryColorRole.delete();
+        await interaction
+            .editReply({
+                content: '',
+                components: [],
+                embeds: [
+                    {
+                        id: 196151257,
+                        title: "Something went wrong",
+                        description: `(Perhaps a timeout?). Run /setup to try again`,
+                        color: "16711680",
+                        fields: [],
+                        thumbnail: {
+                            url: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+                        },
+                    },
+                ],
+            }).then(() => {
+                setTimeout(() => {
+                    initialResponse.delete();
+                }, 10000);
+            });
     }
 }
 
@@ -245,7 +304,7 @@ async function handleCustomColor(interaction, teamRole, primaryColorRole, second
 		
 			const customHexInt = parseInt(customHex, 16);
 
-			await interaction.editReply({ content: ``, components: [], embeds:
+			await interaction.editReply({ content: '', components: [], embeds:
 				[
 					{
 						"id": 196151257,
@@ -255,7 +314,7 @@ async function handleCustomColor(interaction, teamRole, primaryColorRole, second
 						"fields": [
 							{
 								"id": 472281785,
-								"name": `Setting color to #${customHex}`,
+								"name": `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
 								"value": "",
 								"inline": false
 							}
@@ -271,13 +330,13 @@ async function handleCustomColor(interaction, teamRole, primaryColorRole, second
             }
             break;
         } else {
-            await interaction.editReply({ content: ``, components: [], embeds:
+            await interaction.editReply({ content: '', components: [], embeds:
 				[
 					{
 						"id": 196151257,
 						"title": "Custom Color",
 						"description": `Please enter a hex code for the color you\nwould like to use for <@&${teamRole.id}>`,
-						"color": `${customHexInt}`,
+						"color": `${teamRole.color}`,
 						"fields": [
 							{
 								"id": 472281785,
@@ -295,11 +354,9 @@ async function handleCustomColor(interaction, teamRole, primaryColorRole, second
             messageList.push(customColor.first());
         }
     }
-
     await teamRole.setColor(`#${customHex}`);
     await interaction.member.roles.add(teamRole);
     await setNickname(interaction.member, nickname, teamNumber);
-    await confirmation.followUp({ content: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`, components: [] });
 }
 
 module.exports = {
@@ -315,16 +372,29 @@ module.exports = {
                 .setDescription('The team number')
                 .setRequired(true)),
     async execute(interaction) {
+		// Check if this user already has an interaction with this command happening
+		
         const teamNumber = interaction.options.getInteger('teamnumber');
         const nickname = interaction.options.getString('nickname');
         const alreadyARole = interaction.guild.roles.cache.find(role => role.name.startsWith(`${teamNumber} |`));
 
         if (alreadyARole) {
             await addExistingRole(interaction, alreadyARole, nickname, teamNumber);
+				// .then((result) => {
+				// 	// Wait five seconds and delete the original message
+				// 	setTimeout(() => {
+				// 		result.delete();
+				// 	}, 10000);
+				// });
             return;
         }
 
         const { interaction: initialResponse, teamRole, primaryColorRole, secondaryColorRole } = await handleRoleAssignment(interaction, teamNumber);
         await handleConfirmation(interaction, initialResponse, teamRole, primaryColorRole, secondaryColorRole, teamNumber, nickname);
+		// .then(() => {
+		// 	setTimeout(() => {
+		// 		initialResponse.delete();
+		// 	}, 10000);
+		// });
     }
 };
