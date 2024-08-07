@@ -124,13 +124,13 @@ module.exports = {
 				.setRequired(true)),
 	async execute(interaction) {
 		const teamNumber = interaction.options.getInteger('teamnumber');
-		const alreadyARole = interaction.member.roles.cache.find(role => role.name.startsWith(`${teamNumber} |`));
-		if (alreadyARole) {
-			interaction.member.roles.add(alreadyARole)
-			.then(() => {
-				interaction.member.setName(interaction.options.getString('nickname') + ` | ${teamNumber}`);
-				interaction.reply(`Added you to <@&${alreadyARole.id}>, <@${interaction.user.id}>!`);
-			});
+		const alreadyARole = interaction.guild.roles.cache.find(role => role.name.startsWith(`${teamNumber} |`));
+		if (!!alreadyARole) {
+			interaction.member.roles.add(alreadyARole.id)
+				.then(() => {
+					interaction.member.setNickname((interaction.options.getString('nickname') + ` | ${teamNumber}`));
+					interaction.reply(`Added you to <@&${alreadyARole.id}>, <@${interaction.user.id}>!`);
+				});
 			return;
 		}
 		const {
@@ -153,21 +153,23 @@ module.exports = {
 						primaryColorRole.delete();
 						secondaryColorRole.delete();
 						interaction.member.roles.add(teamRole);
+						interaction.member.setNickname((interaction.options.getString('nickname') + ` | ${teamNumber}`));
 						confirmation.update({ content: `Added you to <@&${teamRole.id}>`, components: [] });
 					});
 			} else if (confirmation.customId === 'secondary') {
 				// set the role to secondary color:
-				teamRole.setColor(primaryColorRole.color)
+				teamRole.setColor(secondaryColorRole.color)
 					.then(() => {
 						primaryColorRole.delete();
 						secondaryColorRole.delete();
 						interaction.member.roles.add(teamRole);
+						interaction.member.setNickname((interaction.options.getString('nickname') + ` | ${teamNumber}`));
 						confirmation.update({ content: `Added you to <@&${teamRole.id}>`, components: [] });
 					});
 			} else if (confirmation.customId === 'custom') {
 				primaryColorRole.delete();
 				secondaryColorRole.delete();
-				await confirmation.update({ content: 'Please provide a custom hex code', components: [] });
+				await confirmation.update({ content: 'Please send a custom hex code in the channel :)', components: [] });
 				let tryCount = 1;
 				let customHex;
 				const messageList = new Array();
@@ -175,11 +177,14 @@ module.exports = {
 					const customColor = await confirmation.channel.awaitMessages({ filter: chatFilter, max: 1, time: 120_000 });
 					const message = customColor.first().content;
 
-					const hexRegex = /^([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+					const hexRegex = /#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/;
 					const hexMatch = message.match(hexRegex);
 					if (hexMatch) {
-						customHex = hexMatch[0];
+						customHex = hexMatch[1] || hexMatch[0];
+						customHex = customHex.padEnd(6, customHex);
 						// Valid hex code, exit the loop
+						await interaction.editReply({ content: `Setting color to #${customHex}`, components: [] });
+						customColor.first().delete();
 						for (const message of messageList) {
 							message.delete();
 						}
@@ -199,6 +204,7 @@ module.exports = {
 				teamRole.setColor(`#${customHex}`)
 					.then(() => {
 						interaction.member.roles.add(teamRole);
+						interaction.member.setNickname((interaction.options.getString('nickname') + ` | ${teamNumber}`));
 						confirmation.followUp({ content: `Added you to <@&${teamRole.id}>`, components: [] });
 					});
 			}
