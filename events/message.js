@@ -39,9 +39,6 @@ const contrast = (color1, color2) => {
 };
 
 const workingColor = (color) => {
-	if (color === '#000000' || color === '#ffffff') {
-		return 10;
-	}
 	return contrast(color, '#0f1011');
 }
 
@@ -51,8 +48,9 @@ const betterColor = (color) => {
 
 	// if the color is black or white, make it a little brighter or darker
 	if (color === '#000000') {
-	} else if (color === '#ffffff') {
 		return '#808080';
+	} else if (color === '#ffffff') {
+		return '#eefffc';
 	}
 
 	while (workingColor(color) < 4) {
@@ -110,6 +108,7 @@ module.exports = {
 					const colorResponse = await fetch(colorUrl);
 					const colorData = await colorResponse.json();
 					const primaryColor = colorData.primaryHex;
+					const secondaryColor = colorData.secondaryHex;
 
 					if (teamName && primaryColor) {
 						// make a role with that color and team name formatted "number | teamName"
@@ -120,9 +119,36 @@ module.exports = {
 							color: betterColor(primaryColor),
 						}).then(role => {
 							message.member.roles.add(role);
-							message.channel.send(`I love team <@&${role.id}>!`);
-							message.channel.send(`Contrast: ${workingColor(betterColor(primaryColor))}`);
+							message.channel.send(`<@&${role.id}> it is! Now, it's time to choose a color.`);
 						});
+
+						// make a primary color and secondary color role
+						let primaryColorRole, secondaryColorRole;
+						
+						async function createRoles() {
+							try {
+								primaryColorRole = await message.guild.roles.create({
+									name: `${number} | ${teamName} Primary`,
+									color: primaryColor,
+								});
+						
+								secondaryColorRole = await message.guild.roles.create({
+									name: `${number} | ${teamName} Secondary`,
+									color: secondaryColor,
+								});
+						
+								const sentMessage = await message.channel.send(`Would you like \n:one: | <@&${primaryColorRole.id}> \n:two: | <@&${secondaryColorRole.id}> \n:three: | A custom hex?`);
+
+								await sentMessage.react('1️⃣');
+								await sentMessage.react('2️⃣');
+								await sentMessage.react('3️⃣');
+							} catch (error) {
+								console.error('Error creating roles:', error);
+							}
+						}
+
+						createRoles();
+					
 					}
 				}
 			});
