@@ -1,33 +1,11 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Collection } = require('discord.js');
 const { betterColor } = require('../../utils/colorUtil');
 const { tba } = require('../../config.json');
+const { createEmbed } = require('../../utils/embedBuilder');
 
 const baseTbaUrl = 'https://www.thebluealliance.com/api/v3/team/frc';
 const baseColorUrl = 'https://api.frc-colors.com/v1/team/';
 
-function handleMessages() {
-	const embed = {
-		"embeds": [
-		  {
-			"id": 196151257,
-			"title": "Team Picker",
-			"description": "@Patribots",
-			"color": 2326507,
-			"fields": [
-			  {
-				"id": 472281785,
-				"name": "Step 1: Select Color",
-				"value": "@primary\n@secondary\nA Custom Hex?",
-				"inline": false
-			  }
-			],
-			"thumbnail": {
-			  "url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
-			}
-		  }
-		],
-	  };
-}
 
 async function fetchTeamData(number) {
     const fetch = (await import('node-fetch')).default;
@@ -97,29 +75,24 @@ function createButtonMessage(teamNumber, teamRole, primaryColorRole, secondaryCo
     const row = new ActionRowBuilder()
         .addComponents(primaryButton, secondaryButton, customButton, cancelButton);
 
-    return {
-        // content: `<@&${teamRole.id}> it is! Now, it's time to choose a color.\nWould you like:\n<@&${primaryColorRole.id}> \n<@&${secondaryColorRole.id}> \nA custom hex?`,
-        components: [row],
-		embeds: [
+	const embed = createEmbed({
+		title: "Team Assignment",
+		description: `Welcome <@&${teamRole.id}>!\nYou are the first of your team to join FRCSD`,
+		color: primaryColorRole.color,
+		fields: [
 			{
-			  "id": 196151257,
-			  "title": "Team Assignment",
-			  "description": `Welcome <@&${teamRole.id}>!\nYou are the first of your team to join FRCSD`,
-			  "color": `${primaryColorRole.color}`,
-			  "fields": [
-				{
-				  "id": 472281785,
-				  "name": "Select Color:",
-				  "value": `<@&${primaryColorRole.id}>\n<@&${secondaryColorRole.id}>\nA Custom Hex?`,
-				  "inline": false
-				}
-			  ],
-			  "thumbnail": {
-				"url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
-			  }
-			}
-		  ],
-    };
+				name: "Select Color:",
+				value: `<@&${primaryColorRole.id}>\n<@&${secondaryColorRole.id}>\nA Custom Hex?`,
+				inline: false,
+			},
+		],
+		thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+	});
+
+	return {
+		components: [row],
+		embeds: [embed],
+	};
 }
 
 async function setNickname(member, nickname, teamNumber) {
@@ -162,7 +135,6 @@ async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
         return await interaction.reply({
             embeds: [
                 {
-                    id: 196151257,
                     title: "Team Assignment",
                     description: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
                     color: `${teamRole.color}`,
@@ -197,18 +169,18 @@ async function handleConfirmation(interaction, initialResponse, teamRole, primar
 			await teamRole.delete();
 			await primaryColorRole.delete();
 			await secondaryColorRole.delete();
-			await confirmation.update({ content: '', components: [], embeds: [
-				{
-					"id": 196151257,
-					"title": "Operation Cancelled",
-					"description": `Run /setup to try again`,
-					"color": '16711680',
-					"fields": [],
-					"thumbnail": {
-					  "url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
-					}
-				  }
-			]});
+			const embed = createEmbed({
+				title: "Operation Cancelled",
+				description: "Run /setup to try again",
+				color: 16711680,
+				thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
+			});
+		
+			await confirmation.update({ content: '', components: [], embeds: [embed] }).then(() => {
+				setTimeout(() => {
+					initialResponse.delete();
+				}, 10000);
+			});
 		}
     } catch (e) {
         console.error(e);
@@ -216,23 +188,22 @@ async function handleConfirmation(interaction, initialResponse, teamRole, primar
 		await teamRole.delete();
 		await primaryColorRole.delete();
 		await secondaryColorRole.delete();
+
+		const embed = createEmbed({
+            title: "Something went wrong",
+            description: `Perhaps a timeout?. Run /setup to try again`,
+            color: 16711680,
+            fields: [],
+            thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+        });
+
         await interaction
             .editReply({
-                content: '',
+                content: "",
                 components: [],
-                embeds: [
-                    {
-                        id: 196151257,
-                        title: "Something went wrong",
-                        description: `(Perhaps a timeout?). Run /setup to try again`,
-                        color: "16711680",
-                        fields: [],
-                        thumbnail: {
-                            url: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
-                        },
-                    },
-                ],
-            }).then(() => {
+                embeds: [embed],
+            })
+            .then(() => {
                 setTimeout(() => {
                     initialResponse.delete();
                 }, 10000);
@@ -246,44 +217,37 @@ async function setRoleColor(interaction, teamRole, colorRole, otherColorRole, te
     await otherColorRole.delete();
     await interaction.member.roles.add(teamRole);
     await setNickname(interaction.member, nickname, teamNumber);
-    await confirmation.update({ content: ``, components: [], embeds: [
-		{
-			"id": 196151257,
-			"title": "Team Assignment",
-			"description": `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
-			"color": `${teamRole.color}`,
-			"fields": [],
-			"thumbnail": {
-			  "url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
-			}
-		  }
-	]});
+
+	const embed = createEmbed({
+		title: "Team Assignment",
+		description: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
+		color: teamRole.color,
+		fields: [],
+		thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+	});
+
+    await confirmation.update({ content: ``, components: [], embeds: [embed] });
 }
 
 async function handleCustomColor(interaction, teamRole, primaryColorRole, secondaryColorRole, teamNumber, nickname, confirmation, chatFilter) {
     await primaryColorRole.delete();
     await secondaryColorRole.delete();
-    await confirmation.update({ content: '', components: [], embeds:
-		[
+
+	const embed = createEmbed({
+		title: "Custom Color",
+		description: `Please enter a hex code for the color you\nwould like to use for <@&${teamRole.id}>`,
+		color: teamRole.color,
+		fields: [
 			{
-				"id": 196151257,
-				"title": "Custom Color",
-				"description": `Please enter a hex code for the color you\nwould like to use for <@&${teamRole.id}>`,
-				"color": `${teamRole.color}`,
-				"fields": [
-					{
-						"id": 472281785,
-						"name": "",
-						"value": "Accepted formats are **#RRGGBB**, **RRGGBB**, **#RGB**, and **RGB**",
-						"inline": false
-					}
-				],
-				"thumbnail": {
-				  "url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
-				}
-			}
-		]
-	 });
+				name: "",
+				value: "Accepted formats are **#RRGGBB**, **RRGGBB**, **#RGB**, and **RGB**",
+				inline: false,
+			},
+		],
+		thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+	});
+
+    await confirmation.update({ content: '', components: [], embeds: [embed] });
 
     let tryCount = 1;
     let customHex;
@@ -304,52 +268,42 @@ async function handleCustomColor(interaction, teamRole, primaryColorRole, second
 		
 			const customHexInt = parseInt(customHex, 16);
 
-			await interaction.editReply({ content: '', components: [], embeds:
-				[
+			const embed = createEmbed({
+				title: "Custom Color",
+				description: `Please enter a hex code for the color you\nwould like to use for <@&${teamRole.id}>`,
+				color: customHexInt,
+				fields: [
 					{
-						"id": 196151257,
-						"title": "Custom Color",
-						"description": `Please enter a hex code for the color you\nwould like to use for <@&${teamRole.id}>`,
-						"color": `${customHexInt}`,
-						"fields": [
-							{
-								"id": 472281785,
-								"name": `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
-								"value": "",
-								"inline": false
-							}
-						],
-						"thumbnail": {
-						  "url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
-						}
-					}
-				]});
+						name: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
+						value: "",
+						inline: false,
+					},
+				],
+				thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+			});
+
+			await interaction.editReply({ content: '', components: [], embeds: [embed] });
             await customColor.first().delete();
             for (const msg of messageList) {
                 await msg.delete();
             }
             break;
         } else {
-            await interaction.editReply({ content: '', components: [], embeds:
-				[
+			const embed = createEmbed({
+				title: "Custom Color",
+				description: `Please enter a hex code for the color you\nwould like to use for <@&${teamRole.id}>`,
+				color: teamRole.color,
+				fields: [
 					{
-						"id": 196151257,
-						"title": "Custom Color",
-						"description": `Please enter a hex code for the color you\nwould like to use for <@&${teamRole.id}>`,
-						"color": `${teamRole.color}`,
-						"fields": [
-							{
-								"id": 472281785,
-								"name": `**Invalid hex code, please try again (${tryCount})**`,
-								"value": "Accepted formats are **#RRGGBB**, **RRGGBB**, **#RGB**, and **RGB**",
-								"inline": false
-							}
-						],
-						"thumbnail": {
-						  "url": `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`
-						}
-					}
-				]});
+						name: `**Invalid hex code, please try again (${tryCount})**`,
+						value: "Accepted formats are **#RRGGBB**, **RRGGBB**, **#RGB**, and **RGB**",
+						inline: false,
+					},
+				],
+				thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+			});
+
+            await interaction.editReply({ content: '', components: [], embeds: [embed] });
             tryCount++;
             messageList.push(customColor.first());
         }
