@@ -43,6 +43,16 @@ async function fetchTeamColors(number) {
     return response.json();
 }
 
+/**
+ * Creates roles for a team.
+ * 
+ * @param {Object} initialContext - The initial context object.
+ * @param {Object} apiData - The data fetched from the API.
+ * @returns {Object} - The roles object containing 
+ *      the team role, 
+ *      primary color role, 
+ *      and secondary color role.
+ */
 async function createRoles(initialContext, apiData) {
     const { interaction, teamNumber } = initialContext;
     const { teamName, primaryColor, secondaryColor } = apiData;
@@ -143,9 +153,16 @@ async function setNickname(member, nickname, teamNumber) {
     }
 }
 
+/**
+ * Handles the role assignment for a user.
+ * 
+ * @param {Object} initialContext - The initial context object.
+ * @returns {Object} - The interaction reply and roles object.
+ */
 async function handleRoleAssignment(initialContext) {
-    const teamData = await fetchTeamData(initialContext.teamNumber);
-    const teamColors = await fetchTeamColors(initialContext.teamNumber);
+    const { interaction, teamNumber } = initialContext;
+    const teamData = await fetchTeamData(teamNumber);
+    const teamColors = await fetchTeamColors(teamNumber);
     const apiData = {
         teamName: teamData.nickname,
         primaryColor: teamColors.primaryHex,
@@ -156,10 +173,7 @@ async function handleRoleAssignment(initialContext) {
     // since if we have primary we have secondary
     if (apiData.teamName && apiData.primaryColor) {
         const roles = await createRoles(initialContext, apiData);
-        const buttonMessage = createButtonMessage(
-            initialContext.teamNumber,
-            roles
-        );
+        const buttonMessage = createButtonMessage(teamNumber, roles);
         return {
             interactionReply: await interaction.reply(buttonMessage),
             roles,
@@ -224,13 +238,11 @@ async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
 /**
  * Handles the confirmation of a user interaction.
  *
- * @param {Interaction} interaction - The interaction object.
- * @param {MessageComponent} initialResponse - The initial response message component.
- * @param {Role} teamRole - The team role.
- * @param {Role} primaryColorRole - The primary color role.
- * @param {Role} secondaryColorRole - The secondary color role.
- * @param {number} teamNumber - The team number.
- * @param {string} nickname - The nickname.
+ * @param {Object} initialContext - The initial context object, containing
+ *      the interaction, teamNumber, and nickname.
+ * @param {Message} interactionReply - The interaction reply message.
+ * @param {Object} roles - The roles object, containing
+ *      the team role, primary color role, and secondary color role.
  * @returns {Promise<void>} - A promise that resolves when the confirmation is handled.
  */
 async function handleConfirmation(initialContext, interactionReply, roles) {
@@ -246,10 +258,8 @@ async function handleConfirmation(initialContext, interactionReply, roles) {
 
         switch (confirmation.customId) {
             case "primary":
-                case "secondary":
-                await setRoleColor(initialContext, roles, confirmation, "primary");
-                break;
-                await setRoleColor(initialContext, roles, confirmation, "secondary");
+            case "secondary":
+                await setRoleColor(initialContext, roles, confirmation, confirmation.customId);
                 break;
             case "custom":
                 await handleCustomColor(initialContext, roles, confirmation);
@@ -260,9 +270,11 @@ async function handleConfirmation(initialContext, interactionReply, roles) {
                 break;
         }
     } catch (e) {
-        console.error(e);
-        for (const role of roles) {
-            await role.delete();
+        console.error('\n\n\n',e,'\n\n\n');
+
+        for (const role of Object.values(roles)) {
+            role.delete('An error occurred during setup')
+                .catch(console.error);
         }
 
         const embed = createEmbed({
@@ -288,36 +300,36 @@ async function handleConfirmation(initialContext, interactionReply, roles) {
 }
 
 /**
- * Sets the color of a team role, deletes color roles, adds team role to member, and sets member's nickname.
- *
- * @param {Interaction} interaction - The interaction object.
- * @param {Role} teamRole - The team role to set the color for.
- * @param {Role} colorRole - The color role to delete.
- * @param {Role} otherColorRole - The other color role to delete.
- * @param {number} teamNumber - The team number.
- * @param {string} nickname - The nickname to set for the member.
- * @param {Confirmation} confirmation - The confirmation object.
- * @returns {Promise<void>} - A promise that resolves when the operation is complete.
+ * Sets the color of a role and updates the user's nickname.
+ * 
+ * @param {Object} initialContext - The initial context object, containing
+ *      the interaction, teamNumber, and nickname.
+ * @param {Object} roles - The roles object, containing
+ *     the team role, primary color role, and secondary color role.
+ * @param {Message} confirmation - The confirmation message.
+ * @param {string} primaryOrSecondary - The color to set.
  */
-async function setRoleColor(
-    interaction,
-    teamRole,
-    colorRole,
-    otherColorRole,
-    teamNumber,
-    nickname,
-    confirmation
-) {
-    await teamRole.setColor(colorRole.color);
-    await colorRole.delete();
-    await otherColorRole.delete();
-    await interaction.member.roles.add(teamRole);
-    await setNickname(interaction.member, nickname, teamNumber);
+async function setRoleColor(initialContext, roles, confirmation, primaryOrSecondary) {
+    const { interaction, teamNumber, nickname } = initialContext;
+    const member = interaction.member;
+    const { teamRole, primaryColorRole, secondaryColorRole } = roles;
+
+    const desiredColor =
+        primaryOrSecondary === "primary"
+            ? primaryColorRole.color
+            : secondaryColorRole.color;
+    await teamRole.setColor(desiredColor);
+    
+    await primaryColorRole.delete();
+    await secondaryColorRole.delete();
+
+    await member.roles.add(teamRole);
+    await setNickname(member, nickname, teamNumber);
 
     const embed = createEmbed({
         title: "Team Assignment",
         description: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
-        color: teamRole.color,
+        color: desiredColor,
         fields: [],
         thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
     });
@@ -326,28 +338,18 @@ async function setRoleColor(
 }
 
 /**
- * Handles the custom color setup for a team.
- *
- * @param {Interaction} interaction - The interaction object.
- * @param {Role} teamRole - The team role.
- * @param {Role} primaryColorRole - The primary color role.
- * @param {Role} secondaryColorRole - The secondary color role.
- * @param {number} teamNumber - The team number.
- * @param {string} nickname - The nickname.
+ * Handles the custom color selection for a user.
+ * 
+ * @param {Object} initialContext - The initial context object, containing
+ *     the interaction, teamNumber, and nickname.
+ * @param {Object} roles - The roles object, containing
+ *    the team role, primary color role, and secondary color role.
  * @param {Message} confirmation - The confirmation message.
- * @param {Function} chatFilter - The chat filter function.
- * @returns {Promise<void>} - A promise that resolves when the custom color setup is complete.
  */
-async function handleCustomColor(
-    interaction,
-    teamRole,
-    primaryColorRole,
-    secondaryColorRole,
-    teamNumber,
-    nickname,
-    confirmation,
-    chatFilter
-) {
+async function handleCustomColor(initialContext, roles, confirmation) {
+    const { interaction, teamNumber, nickname } = initialContext;
+    const { teamRole, primaryColorRole, secondaryColorRole } = roles;
+
     await primaryColorRole.delete();
     await secondaryColorRole.delete();
 
@@ -357,7 +359,9 @@ async function handleCustomColor(
         color: teamRole.color,
         fields: [
             {
-                name: "",
+                // Werid thing to note:
+                // The code crashes if the name field is empty
+                name: "Formatting:",
                 value: "Accepted formats are **#RRGGBB**, **RRGGBB**, **#RGB**, and **RGB**",
                 inline: false,
             },
@@ -365,17 +369,15 @@ async function handleCustomColor(
         thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
     });
 
-    await confirmation.update({ content: "", components: [], embeds: [embed] });
+    await confirmation.update({ content: " ", components: [], embeds: [embed] });
 
     let tryCount = 1;
     let customHex;
     const messageList = [];
 
-    const chatFilter = (m) => m.author.id === interaction.user.id;
-
     while (true) {
         const customColor = await confirmation.channel.awaitMessages({
-            filter: chatFilter,
+            filter: ((m) => m.author.id === interaction.user.id),
             max: 1,
             time: 120_000,
         });
@@ -401,8 +403,8 @@ async function handleCustomColor(
                 color: customHexInt,
                 fields: [
                     {
-                        name: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
-                        value: "",
+                        name: "Role Assignment",
+                        value: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
                         inline: false,
                     },
                 ],
@@ -448,10 +450,19 @@ async function handleCustomColor(
     await setNickname(interaction.member, nickname, teamNumber);
 }
 
+/**
+ * Handles the cancellation of a user operation.
+ * 
+ * @param {Object} initialContext - The initial context object, containing
+ *    the interaction, teamNumber, and nickname.
+ * @param {Object} roles - The roles object, containing
+ *    the team role, primary color role, and secondary color role.
+ * @param {Message} confirmation - The confirmation message.
+ */
 async function handleCancelOperation(initialContext, roles, confirmation) {
-    for (const role of roles) {
-        await role.delete();
-    }
+    roles.teamRole.delete();
+    roles.primaryColorRole.delete();
+    roles.secondaryColorRole.delete();
     const embed = createEmbed({
         title: "Operation Cancelled",
         description: "Run /setup to try again",
@@ -517,10 +528,10 @@ module.exports = {
         };
 
         // Handle role assignment and update the roles context object
-        const {interactionReply, roles: rolesContext} = await handleRoleAssignment(initialContext);
+        const {interactionReply, roles} = await handleRoleAssignment(initialContext);
 
         // Pass the context objects to handleConfirmation
-        await handleConfirmation(initialContext, interactionReply, rolesContext);
+        await handleConfirmation(initialContext, interactionReply, roles);
         // .then(() => {
         // 	setTimeout(() => {
         // 		initialResponse.delete();
