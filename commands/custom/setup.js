@@ -43,36 +43,22 @@ async function fetchTeamColors(number) {
     return response.json();
 }
 
-/**
- * Creates roles for a team.
- *
- * @param {Interaction} interaction - The interaction object.
- * @param {number} number - The team number.
- * @param {string} teamName - The team name.
- * @param {string} primaryColor - The primary color of the team.
- * @param {string} secondaryColor - The secondary color of the team.
- * @returns {Object} - An object containing the created roles.
- * @throws {Error} - If there is an error creating the roles.
- */
-async function createRoles(
-    interaction,
-    number,
-    teamName,
-    primaryColor,
-    secondaryColor
-) {
+async function createRoles(initialContext, apiData) {
+    const { interaction, teamNumber } = initialContext;
+    const { teamName, primaryColor, secondaryColor } = apiData;
+
     try {
         const teamRole = await interaction.guild.roles.create({
-            name: `${number} | ${teamName}`,
+            name: `${teamNumber} | ${teamName}`,
         });
 
         const primaryColorRole = await interaction.guild.roles.create({
-            name: `${number} | ${teamName} Primary`,
+            name: `${teamNumber} | ${teamName} Primary`,
             color: betterColor(primaryColor),
         });
 
         const secondaryColorRole = await interaction.guild.roles.create({
-            name: `${number} | ${teamName} Secondary`,
+            name: `${teamNumber} | ${teamName} Secondary`,
             color: betterColor(secondaryColor),
         });
 
@@ -87,17 +73,12 @@ async function createRoles(
  * Creates a button message for team assignment.
  *
  * @param {number} teamNumber - The team number.
- * @param {Role} teamRole - The role assigned to the team.
- * @param {Role} primaryColorRole - The role for the primary color.
- * @param {Role} secondaryColorRole - The role for the secondary color.
+ * @param {Role}s roles - The roles to be assigned.
  * @returns {Object} - The button message object containing components and embeds.
  */
-function createButtonMessage(
-    teamNumber,
-    teamRole,
-    primaryColorRole,
-    secondaryColorRole
-) {
+function createButtonMessage(teamNumber, roles) {
+    const { teamRole, primaryColorRole, secondaryColorRole } = roles;
+
     const primaryButton = new ButtonBuilder()
         .setCustomId("primary")
         .setLabel("Primary")
@@ -162,44 +143,30 @@ async function setNickname(member, nickname, teamNumber) {
     }
 }
 
-/**
- * Handles role assignment for a given team number.
- *
- * @param {Interaction} interaction - The interaction object.
- * @param {number} teamNumber - The team number.
- * @returns {Promise<Object>} - A promise that resolves to an object containing the interaction and role information.
- */
-async function handleRoleAssignment(interaction, teamNumber) {
-    const teamData = await fetchTeamData(teamNumber);
-    const teamColors = await fetchTeamColors(teamNumber);
-    const teamName = teamData.nickname;
-    const primaryColor = teamColors.primaryHex;
-    const secondaryColor = teamColors.secondaryHex;
+async function handleRoleAssignment(initialContext) {
+    const teamData = await fetchTeamData(initialContext.teamNumber);
+    const teamColors = await fetchTeamColors(initialContext.teamNumber);
+    const apiData = {
+        teamName: teamData.nickname,
+        primaryColor: teamColors.primaryHex,
+        secondaryColor: teamColors.secondaryHex
+    };
 
-    if (teamName && primaryColor) {
-        const { teamRole, primaryColorRole, secondaryColorRole } =
-            await createRoles(
-                interaction,
-                teamNumber,
-                teamName,
-                primaryColor,
-                secondaryColor
-            );
+    // we dont need to check secondary 
+    // since if we have primary we have secondary
+    if (apiData.teamName && apiData.primaryColor) {
+        const roles = await createRoles(initialContext, apiData);
         const buttonMessage = createButtonMessage(
-            teamNumber,
-            teamRole,
-            primaryColorRole,
-            secondaryColorRole
+            initialContext.teamNumber,
+            roles
         );
         return {
-            interaction: await interaction.reply(buttonMessage),
-            teamRole,
-            primaryColorRole,
-            secondaryColorRole,
+            interactionReply: await interaction.reply(buttonMessage),
+            roles,
         };
     } else {
         return {
-            interaction: await interaction.reply(
+            interactionReply: await interaction.reply(
                 "Team data or colors not found."
             ),
         };
@@ -266,81 +233,37 @@ async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
  * @param {string} nickname - The nickname.
  * @returns {Promise<void>} - A promise that resolves when the confirmation is handled.
  */
-async function handleConfirmation(
-    interaction,
-    initialResponse,
-    teamRole,
-    primaryColorRole,
-    secondaryColorRole,
-    teamNumber,
-    nickname
-) {
+async function handleConfirmation(initialContext, interactionReply, roles) {
+    const { interaction, teamNumber, nickname } = initialContext;
+    
     const collectorFilter = (i) => i.user.id === interaction.user.id;
-    const chatFilter = (m) => m.author.id === interaction.user.id;
 
     try {
-        const confirmation = await initialResponse.awaitMessageComponent({
+        const confirmation = await interactionReply.awaitMessageComponent({
             filter: collectorFilter,
             time: 120_000,
         });
 
-        if (confirmation.customId === "primary") {
-            await setRoleColor(
-                interaction,
-                teamRole,
-                primaryColorRole,
-                secondaryColorRole,
-                teamNumber,
-                nickname,
-                confirmation
-            );
-        } else if (confirmation.customId === "secondary") {
-            await setRoleColor(
-                interaction,
-                teamRole,
-                secondaryColorRole,
-                primaryColorRole,
-                teamNumber,
-                nickname,
-                confirmation
-            );
-        } else if (confirmation.customId === "custom") {
-            await handleCustomColor(
-                interaction,
-                teamRole,
-                primaryColorRole,
-                secondaryColorRole,
-                teamNumber,
-                nickname,
-                confirmation,
-                chatFilter
-            );
-        } else if (confirmation.customId === "cancel") {
-            await interaction.member.roles.remove(teamRole);
-            await teamRole.delete();
-            await primaryColorRole.delete();
-            await secondaryColorRole.delete();
-            const embed = createEmbed({
-                title: "Operation Cancelled",
-                description: "Run /setup to try again",
-                color: 16711680,
-                thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
-            });
-
-            await confirmation
-                .update({ content: "", components: [], embeds: [embed] })
-                .then(() => {
-                    setTimeout(() => {
-                        initialResponse.delete();
-                    }, 10000);
-                });
+        switch (confirmation.customId) {
+            case "primary":
+                case "secondary":
+                await setRoleColor(initialContext, roles, confirmation, "primary");
+                break;
+                await setRoleColor(initialContext, roles, confirmation, "secondary");
+                break;
+            case "custom":
+                await handleCustomColor(initialContext, roles, confirmation);
+                break;
+            case "cancel":
+            default:
+                await handleCancelOperation(initialContext, roles, confirmation);
+                break;
         }
     } catch (e) {
         console.error(e);
-        await interaction.member.roles.remove(teamRole);
-        await teamRole.delete();
-        await primaryColorRole.delete();
-        await secondaryColorRole.delete();
+        for (const role of roles) {
+            await role.delete();
+        }
 
         const embed = createEmbed({
             title: "Something went wrong",
@@ -358,7 +281,7 @@ async function handleConfirmation(
             })
             .then(() => {
                 setTimeout(() => {
-                    initialResponse.delete();
+                    interactionReply.delete();
                 }, 10000);
             });
     }
@@ -448,6 +371,8 @@ async function handleCustomColor(
     let customHex;
     const messageList = [];
 
+    const chatFilter = (m) => m.author.id === interaction.user.id;
+
     while (true) {
         const customColor = await confirmation.channel.awaitMessages({
             filter: chatFilter,
@@ -523,6 +448,26 @@ async function handleCustomColor(
     await setNickname(interaction.member, nickname, teamNumber);
 }
 
+async function handleCancelOperation(initialContext, roles, confirmation) {
+    for (const role of roles) {
+        await role.delete();
+    }
+    const embed = createEmbed({
+        title: "Operation Cancelled",
+        description: "Run /setup to try again",
+        color: 16711680,
+        thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${initialContext.teamNumber}.png`,
+    });
+
+    await confirmation
+        .update({ content: "", components: [], embeds: [embed] })
+        .then(() => {
+            setTimeout(() => {
+                initialContext.interactionReply.delete();
+            }, 10000);
+        });
+}
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("setup")
@@ -541,7 +486,7 @@ module.exports = {
         ),
     async execute(interaction) {
         // Check if this user already has an interaction with this command happening
-
+        
         const teamNumber = interaction.options.getInteger("teamnumber");
         const nickname = interaction.options.getString("nickname");
         const alreadyARole = interaction.guild.roles.cache.find((role) =>
@@ -564,21 +509,18 @@ module.exports = {
             return;
         }
 
-        const {
-            interaction: initialResponse,
-            teamRole,
-            primaryColorRole,
-            secondaryColorRole,
-        } = await handleRoleAssignment(interaction, teamNumber);
-        await handleConfirmation(
+        // Define the initial context object
+        const initialContext = {
             interaction,
-            initialResponse,
-            teamRole,
-            primaryColorRole,
-            secondaryColorRole,
             teamNumber,
-            nickname
-        );
+            nickname,
+        };
+
+        // Handle role assignment and update the roles context object
+        const {interactionReply, roles: rolesContext} = await handleRoleAssignment(initialContext);
+
+        // Pass the context objects to handleConfirmation
+        await handleConfirmation(initialContext, interactionReply, rolesContext);
         // .then(() => {
         // 	setTimeout(() => {
         // 		initialResponse.delete();
