@@ -266,7 +266,7 @@ async function handleConfirmation(initialContext, interactionReply, roles) {
                 break;
             case "cancel":
             default:
-                await handleCancelOperation(initialContext, roles, confirmation);
+                await handleCancelOperation(initialContext, interactionReply, roles, confirmation);
                 break;
         }
     } catch (e) {
@@ -459,7 +459,7 @@ async function handleCustomColor(initialContext, roles, confirmation) {
  *    the team role, primary color role, and secondary color role.
  * @param {Message} confirmation - The confirmation message.
  */
-async function handleCancelOperation(initialContext, roles, confirmation) {
+async function handleCancelOperation(initialContext, interactionReply, roles, confirmation) {
     roles.teamRole.delete();
     roles.primaryColorRole.delete();
     roles.secondaryColorRole.delete();
@@ -474,7 +474,7 @@ async function handleCancelOperation(initialContext, roles, confirmation) {
         .update({ content: "", components: [], embeds: [embed] })
         .then(() => {
             setTimeout(() => {
-                initialContext.interactionReply.delete();
+                interactionReply.delete();
             }, 10000);
         });
 }
