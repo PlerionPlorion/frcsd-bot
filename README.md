@@ -9,6 +9,7 @@ I found that the ugly things I expected to do with this bot can be done via Comm
 
 With that being said, here's a quick feature list:
 
+https://github.com/user-attachments/assets/e1082d79-8741-4edc-b42f-33ec16d2a01e
 
 ![image](https://github.com/user-attachments/assets/1f16be6c-9274-44cc-8e6b-01a4cf948176)
 
