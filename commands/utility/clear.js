@@ -1,9 +1,10 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('clearbotmessages')
-		.setDescription('Clears all messages from the bot sent within the past 5 minutes.'),
+		.setDescription('Clears all messages from the bot sent within the past 5 minutes.')
+		.setDefaultMemberPermissions(PermissionsBitField.Flags.ManageMessages),
 	async execute(interaction) {
 		const channel = interaction.channel;
 		const botId = interaction.client.user.id;

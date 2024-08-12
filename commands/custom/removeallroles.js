@@ -1,9 +1,10 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('removeroles')
-		.setDescription('Removes all FRC roles from the server.'),
+		.setDescription('Removes all FRC roles from the server.')
+		.setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
 	async execute(interaction) {
 		await interaction.deferReply();
 		const roles = interaction.guild.roles.cache.filter(role => role.name.includes('|'));
