@@ -486,7 +486,7 @@ module.exports = {
         .addStringOption((option) =>
             option
                 .setName("nickname")
-                .setDescription("Your name")
+                .setDescription("YOUR preferred name")
                 .setRequired(true)
         )
         .addIntegerOption((option) =>
