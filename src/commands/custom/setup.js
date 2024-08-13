@@ -6,7 +6,7 @@ const {
     Collection,
 } = require("discord.js");
 const { betterColor } = require("../../utils/colorUtil");
-const { tba } = require("../../config.json");
+const { tba } = require("../../../config.json");
 const { createEmbed } = require("../../utils/embedBuilder");
 
 const baseTbaUrl = "https://www.thebluealliance.com/api/v3/team/frc";

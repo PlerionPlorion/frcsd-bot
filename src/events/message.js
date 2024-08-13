@@ -104,7 +104,7 @@ const options = {
 	method: 'GET',
 	headers: {
 		'accept': 'application/json',
-		'X-TBA-Auth-Key': require('../config.json').tba
+		'X-TBA-Auth-Key': require('../../config.json').tba
 	}
 };
 
