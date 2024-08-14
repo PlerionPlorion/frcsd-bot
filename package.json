@@ -9,7 +9,6 @@
 		"node-fetch": "^3.3.2"
 	},
 	"devDependencies": {
-		"eslint": "^9.8.0",
-		"wrangler": "^3.71.0"
+		"eslint": "^9.8.0"
 	}
 }
