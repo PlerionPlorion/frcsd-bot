@@ -8,6 +8,7 @@ const {
 const { betterColor } = require("../../utils/colorUtil");
 const { tba } = require("../../../config.json");
 const { createEmbed } = require("../../utils/embedBuilder");
+const { exec } = require("child_process");
 
 const baseTbaUrl = "https://www.thebluealliance.com/api/v3/team/frc";
 const baseColorUrl = "https://api.frc-colors.com/v1/team/";
@@ -28,6 +29,9 @@ async function fetchTeamData(number) {
             "X-TBA-Auth-Key": tba,
         },
     });
+    if (!response.ok) {
+        console.error(response);
+    }
     return response.json();
 }
 
@@ -41,9 +45,26 @@ async function fetchTeamColors(number) {
     const fetch = (await import("node-fetch")).default;
     const colorUrl = `${baseColorUrl}${number}`;
     const response = await fetch(colorUrl);
+    if (!response.ok) {
+        return {"primaryHex":"#ffffff","secondaryHex":"#000000","verified":false};
+    }
     return response.json();
 }
 
+async function getTeamAvatarUrl(teamNumber) {
+    let thumbnailUrl = `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`;
+
+    // Wrap the exec function in a Promise since async logic just makes so much sense
+    return new Promise((resolve, reject) => {
+        exec(`curl --head --silent ${thumbnailUrl}`, (error, stdout, stderr) => {
+            if (!stdout.includes("200 OK")) {
+                // Endpoint does not exist, use the alternative URL
+                thumbnailUrl = "https://www.firstinspires.org/sites/default/files/uploads/resource_library/brand/thumbnails/FIRST-Icon.png";
+            }
+            resolve(thumbnailUrl); // Resolve the Promise with the final thumbnailUrl value
+        });
+    });
+}
 /**
  * Creates roles for a team.
  * 
@@ -59,18 +80,26 @@ async function createRoles(initialContext, apiData) {
     const { teamName, primaryColor, secondaryColor } = apiData;
 
     try {
+        // get role "-- SORTING ROLE -- for PatriBOT (don't delete)" 
+        const role = interaction.guild.roles.cache.find(role => role.name === "-- SORTING ROLE -- for PatriBOT (don't delete)");
+        // if the role doesnt exist, default to position 0
+        const position = role ? role.position+1 : 0;
         const teamRole = await interaction.guild.roles.create({
             name: `${teamNumber} | ${teamName}`,
+            position: position,
+            reason: "Team Assignment | PatriBOT"
         });
 
         const primaryColorRole = await interaction.guild.roles.create({
             name: `${teamNumber} | ${teamName} Primary`,
             color: betterColor(primaryColor),
+            reason: "Team Assignment | PatriBOT"
         });
 
         const secondaryColorRole = await interaction.guild.roles.create({
             name: `${teamNumber} | ${teamName} Secondary`,
             color: betterColor(secondaryColor),
+            reason: "Team Assignment | PatriBOT"
         });
 
         return { teamRole, primaryColorRole, secondaryColorRole };
@@ -87,7 +116,7 @@ async function createRoles(initialContext, apiData) {
  * @param {Role}s roles - The roles to be assigned.
  * @returns {Object} - The button message object containing components and embeds.
  */
-function createButtonMessage(teamNumber, roles) {
+async function createButtonMessage(teamNumber, roles) {
     const { teamRole, primaryColorRole, secondaryColorRole } = roles;
 
     const primaryButton = new ButtonBuilder()
@@ -117,6 +146,7 @@ function createButtonMessage(teamNumber, roles) {
         cancelButton
     );
 
+    const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
     const embed = createEmbed({
         title: "Team Assignment",
         description: `Welcome <@&${teamRole.id}>!\nYou are the first of your team to join FRCSD`,
@@ -128,7 +158,7 @@ function createButtonMessage(teamNumber, roles) {
                 inline: false,
             },
         ],
-        thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
+        thumbnailUrl: thumbnailUrl,
     });
 
     return {
@@ -174,16 +204,18 @@ async function handleRoleAssignment(initialContext) {
     // since if we have primary we have secondary
     if (apiData.teamName && apiData.primaryColor) {
         const roles = await createRoles(initialContext, apiData);
-        const buttonMessage = createButtonMessage(teamNumber, roles);
+        const buttonMessage = await createButtonMessage(teamNumber, roles);
         return {
             interactionReply: await interaction.reply(buttonMessage),
             roles,
         };
     } else {
+        console.error(`Team data: ${apiData.teamName}, colors: ${apiData.primaryColor}`);
         return {
-            interactionReply: await interaction.reply(
-                "Team data or colors not found."
-            ),
+            interactionReply: await interaction.reply({
+                content: `Team data or colors not found for ${teamNumber}.`,
+                ephemeral: true,
+            }),
         };
     }
 }
@@ -201,31 +233,34 @@ async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
     try {
         await interaction.member.roles.add(teamRole.id);
         await setNickname(interaction.member, nickname, teamNumber);
+        await interaction.guild.members.fetch();
+        const memberCount = interaction.guild.members.cache.filter(
+            (member) =>
+            member.roles.cache.has(teamRole.id) &&
+            member.id !== interaction.user.id
+        ).size;
         const members =
-            interaction.guild.members.cache
-                .filter(
-                    (member) =>
-                        member.roles.cache.has(teamRole.id) &&
-                        member.id !== interaction.user.id
-                )
-                .map((member) => `<@${member.id}>`)
-                .join("\n") || "You're the first one!";
+            memberCount > 0
+            ? `There are ${memberCount} other members on your team in the server.`
+            : "You're the first one!";
+                
+        const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
         return await interaction.reply({
             embeds: [
+            {
+                title: "Team Assignment",
+                description: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
+                color: `${teamRole.color}`,
+                fields: [
                 {
-                    title: "Team Assignment",
-                    description: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
-                    color: `${teamRole.color}`,
-                    fields: [
-                        {
-                            name: "Others on your team in the server:",
-                            value: members,
-                        },
-                    ],
-                    thumbnail: {
-                        url: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
-                    },
+                    name: "Teamates:",
+                    value: members,
                 },
+                ],
+                thumbnail: {
+                    url: thumbnailUrl,
+                },
+            },
             ],
         });
     } catch (error) {
@@ -278,12 +313,13 @@ async function handleConfirmation(initialContext, interactionReply, roles) {
                 .catch(console.error);
         }
 
+        const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
         const embed = createEmbed({
             title: "Something went wrong",
             description: `Perhaps a timeout?. Run /setup to try again`,
             color: 16711680,
             fields: [],
-            thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
+            thumbnailUrl: thumbnailUrl,
         });
 
         await interaction
@@ -327,12 +363,13 @@ async function setRoleColor(initialContext, roles, confirmation, primaryOrSecond
     await member.roles.add(teamRole);
     await setNickname(member, nickname, teamNumber);
 
+    const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
     const embed = createEmbed({
         title: "Team Assignment",
         description: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
         color: desiredColor,
         fields: [],
-        thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
+        thumbnailUrl: thumbnailUrl,
     });
 
     await confirmation.update({ content: ``, components: [], embeds: [embed] });
@@ -350,6 +387,7 @@ async function setRoleColor(initialContext, roles, confirmation, primaryOrSecond
 async function handleCustomColor(initialContext, roles, confirmation) {
     const { interaction, teamNumber, nickname } = initialContext;
     const { teamRole, primaryColorRole, secondaryColorRole } = roles;
+    const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
 
     await primaryColorRole.delete();
     await secondaryColorRole.delete();
@@ -367,7 +405,7 @@ async function handleCustomColor(initialContext, roles, confirmation) {
                 inline: false,
             },
         ],
-        thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
+        thumbnailUrl: thumbnailUrl,
     });
 
     await confirmation.update({ content: " ", components: [], embeds: [embed] });
@@ -409,7 +447,7 @@ async function handleCustomColor(initialContext, roles, confirmation) {
                         inline: false,
                     },
                 ],
-                thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
+                thumbnailUrl: thumbnailUrl,
             });
 
             await interaction.editReply({
@@ -434,7 +472,7 @@ async function handleCustomColor(initialContext, roles, confirmation) {
                         inline: false,
                     },
                 ],
-                thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
+                thumbnailUrl: thumbnailUrl,
             });
 
             await interaction.editReply({
@@ -464,11 +502,12 @@ async function handleCancelOperation(initialContext, interactionReply, roles, co
     roles.teamRole.delete();
     roles.primaryColorRole.delete();
     roles.secondaryColorRole.delete();
+    const thumbnailUrl = await getTeamAvatarUrl(initialContext.teamNumber);
     const embed = createEmbed({
         title: "Operation Cancelled",
         description: "Run /setup to try again",
         color: 16711680,
-        thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${initialContext.teamNumber}.png`,
+        thumbnailUrl: thumbnailUrl,
     });
 
     await confirmation
@@ -486,21 +525,48 @@ module.exports = {
         .setDescription("Setup command to get you started!")
         .addStringOption((option) =>
             option
-                .setName("nickname")
+                .setName("real_name")
                 .setDescription("YOUR preferred name")
                 .setRequired(true)
         )
         .addIntegerOption((option) =>
             option
-                .setName("teamnumber")
+                .setName("team_number")
                 .setDescription("The team number")
                 .setRequired(true)
         ),
     async execute(interaction) {
+        // Check if the user is not assigned to any team
+        if (
+            interaction.member.roles.cache.some((role) =>
+                role.name.includes(" | ")
+            ) &&
+            !interaction.member.roles.cache.some(
+                (role) => role.name.toLowerCase() === "mod"
+            ) &&
+            !interaction.member.roles.cache.some(
+                (role) => role.name.toLowerCase() === "admin"
+            )
+        ) {
+            const embed = createEmbed({
+                title: "Team Assignment",
+                description:
+                    "You are already assigned to a team.\nContact an admin if there was a mistake.",
+                color: "f54e42",
+                thumbnailUrl: `https://www.shareicon.net/data/256x256/2015/08/18/86945_warning_512x512.png`,
+            });
+
+            await interaction.reply({
+                embeds: [embed],
+                ephemeral: true,
+            });
+            return;
+        }
+
         // Check if this user already has an interaction with this command happening
         
-        const teamNumber = interaction.options.getInteger("teamnumber");
-        const nickname = interaction.options.getString("nickname");
+        const teamNumber = interaction.options.getInteger("team_number");
+        const nickname = interaction.options.getString("real_name");
         const alreadyARole = interaction.guild.roles.cache.find((role) =>
             role.name.startsWith(`${teamNumber} |`)
         );
