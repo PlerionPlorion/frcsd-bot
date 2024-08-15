@@ -11,6 +11,7 @@ const { createEmbed } = require("../../utils/embedBuilder");
 
 const baseTbaUrl = "https://www.thebluealliance.com/api/v3/team/frc";
 const baseColorUrl = "https://api.frc-colors.com/v1/team/";
+const currentYear = new Date().getFullYear();
 
 /**
  * Fetches team data from The Blue Alliance API.
@@ -127,7 +128,7 @@ function createButtonMessage(teamNumber, roles) {
                 inline: false,
             },
         ],
-        thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+        thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
     });
 
     return {
@@ -222,7 +223,7 @@ async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
                         },
                     ],
                     thumbnail: {
-                        url: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+                        url: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
                     },
                 },
             ],
@@ -282,7 +283,7 @@ async function handleConfirmation(initialContext, interactionReply, roles) {
             description: `Perhaps a timeout?. Run /setup to try again`,
             color: 16711680,
             fields: [],
-            thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+            thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
         });
 
         await interaction
@@ -331,7 +332,7 @@ async function setRoleColor(initialContext, roles, confirmation, primaryOrSecond
         description: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
         color: desiredColor,
         fields: [],
-        thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+        thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
     });
 
     await confirmation.update({ content: ``, components: [], embeds: [embed] });
@@ -366,7 +367,7 @@ async function handleCustomColor(initialContext, roles, confirmation) {
                 inline: false,
             },
         ],
-        thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+        thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
     });
 
     await confirmation.update({ content: " ", components: [], embeds: [embed] });
@@ -408,7 +409,7 @@ async function handleCustomColor(initialContext, roles, confirmation) {
                         inline: false,
                     },
                 ],
-                thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+                thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
             });
 
             await interaction.editReply({
@@ -433,7 +434,7 @@ async function handleCustomColor(initialContext, roles, confirmation) {
                         inline: false,
                     },
                 ],
-                thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${teamNumber}.png`,
+                thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`,
             });
 
             await interaction.editReply({
@@ -467,7 +468,7 @@ async function handleCancelOperation(initialContext, interactionReply, roles, co
         title: "Operation Cancelled",
         description: "Run /setup to try again",
         color: 16711680,
-        thumbnailUrl: `https://www.thebluealliance.com/avatar/2024/frc${initialContext.teamNumber}.png`,
+        thumbnailUrl: `https://www.thebluealliance.com/avatar/${currentYear}/frc${initialContext.teamNumber}.png`,
     });
 
     await confirmation
