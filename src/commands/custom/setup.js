@@ -232,6 +232,8 @@ async function handleRoleAssignment(initialContext) {
 async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
     try {
         await interaction.member.roles.add(teamRole.id);
+        // Remove the "Not SD" role
+        await interaction.member.roles.remove("1052128702181425163");
         await setNickname(interaction.member, nickname, teamNumber);
         await interaction.guild.members.fetch();
         const memberCount = interaction.guild.members.cache.filter(
@@ -486,6 +488,8 @@ async function handleCustomColor(initialContext, roles, confirmation) {
     }
     await teamRole.setColor(`#${customHex}`);
     await interaction.member.roles.add(teamRole);
+    // Remove the "Not SD" role
+    await interaction.member.roles.remove("1052128702181425163");
     await setNickname(interaction.member, nickname, teamNumber);
 }
 
