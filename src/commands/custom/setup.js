@@ -233,16 +233,15 @@ async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
     try {
         await interaction.member.roles.add(teamRole.id);
         // Remove the "Not SD" role
-        await interaction.member.roles.remove("1052128702181425163");
+        await removeNotSdRole(interaction);
         await setNickname(interaction.member, nickname, teamNumber);
         await interaction.guild.members.fetch();
         const memberCount = interaction.guild.members.cache.filter(
             (member) =>
-            member.roles.cache.has(teamRole.id) &&
-            member.id !== interaction.user.id
+                member.roles.cache.has(teamRole.id) &&
+                member.id !== interaction.user.id
         ).size;
-        const members =
-            memberCount > 0
+        const members = memberCount > 0
             ? `There are ${memberCount} other members on your team in the server.`
             : "You're the first one!";
                 
@@ -270,6 +269,13 @@ async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
         return await interaction.reply(
             "There was an error adding you to the existing role."
         );
+    }
+}
+
+async function removeNotSdRole(interaction) {
+    const notSdRole = interaction.guild.roles.cache.find(role => role.name === "Not SD") || false;
+    if (notSdRole) {
+        await interaction.member.roles.remove(notSdRole.id);
     }
 }
 
@@ -364,6 +370,7 @@ async function setRoleColor(initialContext, roles, confirmation, primaryOrSecond
 
     await member.roles.add(teamRole);
     await setNickname(member, nickname, teamNumber);
+    await removeNotSdRole(interaction);
 
     const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
     const embed = createEmbed({
@@ -489,7 +496,7 @@ async function handleCustomColor(initialContext, roles, confirmation) {
     await teamRole.setColor(`#${customHex}`);
     await interaction.member.roles.add(teamRole);
     // Remove the "Not SD" role
-    await interaction.member.roles.remove("1052128702181425163");
+    await removeNotSdRole(interaction);
     await setNickname(interaction.member, nickname, teamNumber);
 }
 
