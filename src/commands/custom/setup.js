@@ -57,7 +57,8 @@ async function getTeamAvatarUrl(teamNumber) {
     // Wrap the exec function in a Promise since async logic just makes so much sense
     return new Promise((resolve, reject) => {
         exec(`curl --head --silent ${thumbnailUrl}`, (error, stdout, stderr) => {
-            if (!stdout.includes("200 OK")) {
+            const regex = /HTTP\/\d\.\d\s(\d{3})/; // Regex to match the HTTP status code
+            if (!(stdout.match(regex) && stdout.match(regex)[1] === "200")) {
                 // Endpoint does not exist, use the alternative URL
                 thumbnailUrl = "https://www.firstinspires.org/sites/default/files/uploads/resource_library/brand/thumbnails/FIRST-Icon.png";
             }
