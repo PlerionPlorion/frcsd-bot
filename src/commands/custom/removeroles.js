@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 
 module.exports = {
+	category: 'custom',
 	data: new SlashCommandBuilder()
 		.setName('removeroles')
 		.setDescription('Removes all FRC roles from the server.')

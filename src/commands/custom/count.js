@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const { generateRandomExpression } = require('../../utils/expressionGenerator');
 
 module.exports = {
+	category: 'custom',
     data: new SlashCommandBuilder()
         .setName('count')
         .setDescription('Overcomplicate a number!')
