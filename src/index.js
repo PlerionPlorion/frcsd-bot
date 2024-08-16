@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
+const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { token } = require('../config.json');
 
 // Create a new client instance
@@ -13,6 +13,7 @@ const client = new Client({
     ],
 });
 client.commands = new Collection();
+client.cooldowns = new Collection();
 
 const foldersPath = path.join(__dirname, 'commands');
 const commandFolders = fs.readdirSync(foldersPath);
