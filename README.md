@@ -1,4 +1,4 @@
-# frcsd-bot
+# frcsd-bot - invite it [here](https://discord.com/oauth2/authorize?client_id=1270238395519733812&scope=bot&permissions=8)!
 The PatriBOT on FRC San Diego's Discord Server!
 
 -------
