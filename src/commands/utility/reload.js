@@ -21,29 +21,49 @@ module.exports = {
 		.addStringOption(option =>
 			option.setName('command')
 				.setDescription('The command to reload.')
-				.setRequired(false))
+				.setRequired(false)
+				.setAutocomplete(true))
         .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
+	async autocomplete(interaction) {
+		const focusedValue = interaction.options.getFocused();
+		const choices = interaction.client.commands.map(command => command.data.name);
+		const filtered = choices.filter(choice => choice.startsWith(focusedValue));
+		await interaction.respond(
+			filtered.map(choice => ({ name: choice, value: choice })),
+		);
+	},
 	async execute(interaction) {
 		const commandName = interaction.options.getString('command')?.toLowerCase();
 		const commands = interaction.client.commands;
 
 		if (!commandName) {
-			await interaction.reply(`Reloading Commands...`);
+			await interaction.reply({
+				content: 'Reloading all commands...',
+				ephemeral: true
+			});
 			let message = '';
 			
 			const oldCommands = commands.clone();
 			oldCommands.forEach(async (command) => {
 				message += attemptCommandReload(command, commands);
-				await interaction.editReply(message);
+				await interaction.editReply({
+					content: message,
+				});
 			});
 		} else {
 			const command = commands.get(commandName);
 
 			if (!command) {
-				return interaction.reply(`There is no command with name \`${commandName}\`!`);
+				return interaction.reply({
+					content: `There is no command with the name \`${commandName}\``,
+					ephemeral: true
+				});
 			}
 
-			await interaction.reply(attemptCommandReload(command, commands));
+			await interaction.reply({
+				content: attemptCommandReload(command, commands),
+				ephemeral: true
+			});
 		}
 	},
 };
