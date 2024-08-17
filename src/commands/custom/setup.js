@@ -3,16 +3,17 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    Collection,
 } = require("discord.js");
 const { betterColor } = require("../../utils/colorUtil");
 const { tba } = require("../../../config.json");
 const { createEmbed } = require("../../utils/embedBuilder");
-const { exec } = require("child_process");
+
+async function getTeamAvatarUrl(teamNumber) {
+    return require("../../utils/avatarURL")(teamNumber);
+}
 
 const baseTbaUrl = "https://www.thebluealliance.com/api/v3/team/frc";
 const baseColorUrl = "https://api.frc-colors.com/v1/team/";
-const currentYear = new Date().getFullYear();
 
 /**
  * Fetches team data from The Blue Alliance API.
@@ -51,21 +52,6 @@ async function fetchTeamColors(number) {
     return response.json();
 }
 
-async function getTeamAvatarUrl(teamNumber) {
-    let thumbnailUrl = `https://www.thebluealliance.com/avatar/${currentYear}/frc${teamNumber}.png`;
-
-    // Wrap the exec function in a Promise since async logic just makes so much sense
-    return new Promise((resolve, reject) => {
-        exec(`curl --head --silent ${thumbnailUrl}`, (error, stdout, stderr) => {
-            const regex = /HTTP\/\d(?:\.\d)?\s(\d{3})/; // Regex to match the HTTP status code
-            if (!(stdout.match(regex) && stdout.match(regex)[1] === "200")) {
-                // Endpoint does not exist, use the alternative URL
-                thumbnailUrl = "https://www.firstinspires.org/sites/default/files/uploads/resource_library/brand/thumbnails/FIRST-Icon.png";
-            }
-            resolve(thumbnailUrl); // Resolve the Promise with the final thumbnailUrl value
-        });
-    });
-}
 /**
  * Creates roles for a team.
  * 
@@ -221,6 +207,10 @@ async function handleRoleAssignment(initialContext) {
     }
 }
 
+async function verifyTeam(interaction, teamRole) {
+    
+}
+
 /**
  * Adds an existing role to the member and sets their nickname.
  * @param {Interaction} interaction - The interaction object.
@@ -232,11 +222,37 @@ async function handleRoleAssignment(initialContext) {
  */
 async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
     try {
+        const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
+        await interaction.guild.members.fetch();
         await interaction.member.roles.add(teamRole.id);
+        // look for another user with the same role and check if they have the "Not SD" role
+        const otherMember = interaction.guild.members.cache.find(member => member.roles.cache.has(teamRole.id) && member.id !== interaction.user.id);
+        const notSdRole = interaction.guild.roles.cache.find(role => role.name === "Not SD") || false;
+        if (otherMember && notSdRole && interaction.member.roles.cache.has(notSdRole.id)) {
+            interaction.client.emit('newTeamAdded', teamRole);
+            await interaction.reply({
+                embeds: [
+                {
+                    title: "Team Assignment",
+                    description: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
+                    color: `${teamRole.color}`,
+                    fields: [
+                    {
+                        name: "Verification:",
+                        value: `Since <@&${teamRole.id}> is a new team for SDFRC,\nyou will have to wait to be verified by a mod before gaining access to the rest of the server.`,
+                    },
+                    ],
+                    thumbnail: {
+                        url: thumbnailUrl,
+                    },
+                },
+                ],
+            });
+            return;
+        }
         // Remove the "Not SD" role
         await removeNotSdRole(interaction);
         await setNickname(interaction.member, nickname, teamNumber);
-        await interaction.guild.members.fetch();
         const memberCount = interaction.guild.members.cache.filter(
             (member) =>
                 member.roles.cache.has(teamRole.id) &&
@@ -245,9 +261,8 @@ async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
         const members = memberCount > 0
             ? `There are ${memberCount} other members on your team in the server.`
             : "You're the first one!";
-                
-        const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
-        return await interaction.reply({
+            
+        await interaction.reply({
             embeds: [
             {
                 title: "Team Assignment",
@@ -371,14 +386,19 @@ async function setRoleColor(initialContext, roles, confirmation, primaryOrSecond
 
     await member.roles.add(teamRole);
     await setNickname(member, nickname, teamNumber);
-    await removeNotSdRole(interaction);
+    interaction.client.emit('newTeamAdded', teamRole);
 
     const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
     const embed = createEmbed({
         title: "Team Assignment",
         description: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
         color: desiredColor,
-        fields: [],
+        fields: [
+            {
+                name: "Role Verification:",
+                value: `Since <@&${teamRole.id}> is a new team for SDFRC,\nyou will have to wait to be verified by a mod before gaining access to the rest of the server.`,
+            }
+        ],
         thumbnailUrl: thumbnailUrl,
     });
 
@@ -447,15 +467,14 @@ async function handleCustomColor(initialContext, roles, confirmation) {
             const customHexInt = parseInt(customHex, 16);
 
             const embed = createEmbed({
-                title: "Custom Color",
-                description: `Please enter a hex code for the color you\nwould like to use for <@&${teamRole.id}>`,
+                title: "Team Assignment",
+                description: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
                 color: customHexInt,
                 fields: [
                     {
-                        name: "Role Assignment",
-                        value: `Added you to <@&${teamRole.id}>, <@${interaction.user.id}>`,
-                        inline: false,
-                    },
+                        name: "Role Verification:",
+                        value: `Since <@&${teamRole.id}> is a new team for SDFRC,\nyou will have to wait to be verified by a mod before gaining access to the rest of the server.`,
+                    }
                 ],
                 thumbnailUrl: thumbnailUrl,
             });
@@ -496,9 +515,9 @@ async function handleCustomColor(initialContext, roles, confirmation) {
     }
     await teamRole.setColor(`#${customHex}`);
     await interaction.member.roles.add(teamRole);
-    // Remove the "Not SD" role
-    await removeNotSdRole(interaction);
     await setNickname(interaction.member, nickname, teamNumber);
+    interaction.client.emit('newTeamAdded', teamRole);
+
 }
 
 /**
@@ -532,6 +551,8 @@ async function handleCancelOperation(initialContext, interactionReply, roles, co
 }
 
 module.exports = {
+	category: 'custom',
+    cooldown: 10,
     data: new SlashCommandBuilder()
         .setName("setup")
         .setDescription("Setup command to get you started!")
