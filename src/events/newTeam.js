@@ -1,7 +1,25 @@
 const { ComponentType } = require('discord.js');
 const { createEmbed } = require('../utils/embedBuilder');
+const { tba } = require('../../config.json');
 async function getTeamAvatarUrl(teamNumber) {
     return require("../utils/avatarURL")(teamNumber);
+}
+
+const baseTbaUrl = "https://www.thebluealliance.com/api/v3/team/frc";
+async function fetchTeamData(number) {
+    const fetch = (await import("node-fetch")).default;
+    const tbaUrl = `${baseTbaUrl}${number}/simple`;
+    const response = await fetch(tbaUrl, {
+        method: "GET",
+        headers: {
+            accept: "application/json",
+            "X-TBA-Auth-Key": tba,
+        },
+    });
+    if (!response.ok) {
+        console.error(response);
+    }
+    return response.json();
 }
 
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
@@ -9,6 +27,7 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 async function makeEmbed(team) {
 	const teamName = team.name;
 	const teamNumber = teamName.match(/\d+/)[0];
+    const teamData = await fetchTeamData(teamNumber);
 	const teamMembersString = team.members.map(member => `<@${member.id}>`).join('\n');
     const avatarURL = await getTeamAvatarUrl(teamNumber);
     const buttons = new ActionRowBuilder()
@@ -26,7 +45,7 @@ async function makeEmbed(team) {
         components: [buttons],
         embeds: [createEmbed({
             title: `Team verification | ${teamNumber}`,
-            description: `<@&${team.id}> is requesting to be verified`,
+            description: `<@&${team.id}> is requesting to be verified.\nThey are from ${teamData.city || "some city"}, ${teamData.state_prov || "some state"} ${teamData.country || "some country"}`,
             fields: [{ name: "Members", value: teamMembersString }],
             color: team.color,
 			thumbnailUrl: avatarURL,
