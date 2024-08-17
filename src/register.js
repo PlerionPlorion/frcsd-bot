@@ -46,7 +46,7 @@ const rest = new REST().setToken(token);
 		// If reloadCommand is defined, deploy the reload command separately
 		if (reloadCommand) {
 			await rest.put(
-				// GuildID is for "sdfrc bot we so back" test server
+				// GuildID is for "frcsd bot we so back" test server
 				Routes.applicationGuildCommand(clientId, 1270642179592814592, reloadCommand.id),
 				{ body: reloadCommand },
 			);
