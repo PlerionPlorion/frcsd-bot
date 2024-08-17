@@ -25,7 +25,7 @@ module.exports = {
                         createEmbed({
                             title: `Team verification | ${teamNumber}`,
                             description: `<@${interaction.user.id}> verified <@&${teamRole.id}>!`,
-                            color: teamRole.color,
+                            color: 3211083,
                             inline: false,
                             thumbnailUrl: avatarUrl,
                         })
