@@ -22,7 +22,7 @@ module.exports = {
 
 			await channel.bulkDelete(botMessages);
 
-			await interaction.reply({ content: 'Cleared all bot messages from the past 5 minutes.', ephemeral: true });
+			await interaction.reply({ content: `Cleared all bot messages from the past ${minutesAgo} minutes.`, ephemeral: true });
 		} catch (error) {
 			console.error('Error clearing bot messages:', error);
 			await interaction.reply({ content: 'There was an error clearing the bot messages.', ephemeral: true });
