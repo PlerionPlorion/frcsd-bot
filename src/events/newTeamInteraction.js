@@ -36,7 +36,7 @@ module.exports = {
         if (interaction.customId === 'denyNewTeam') {
             // get the team by looking at the only role the user that contains the team number
             const teamNumber = interaction.message.embeds[0].title.match(/\d+/)[0];
-            const teamRole = interaction.guild.roles.cache.find(role => role.name.includes(teamNumber));
+            const teamRole = interaction.guild.roles.cache.find(role => role.name.includes(teamNumber + " |"));
             const avatarUrl = await getTeamAvatarUrl(teamNumber);
             const channel = interaction.message.channel;
             teamRole.delete();
