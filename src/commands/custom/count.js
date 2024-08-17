@@ -10,10 +10,9 @@ module.exports = {
             option.setName('number')
                 .setDescription('The number to think about for a very... very long time.')
                 .setRequired(true)),
-    async execute(interaction) {
+    execute(interaction) {
         const number = interaction.options.getInteger('number');
-
         const expression = generateRandomExpression(number);
-        await interaction.reply({ content: `${expression}`, ephemeral: true });
+        interaction.reply({ content: `${expression}`, ephemeral: true });
     },
 };
