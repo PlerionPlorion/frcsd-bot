@@ -34,7 +34,7 @@ module.exports = {
             const teamNumber = match ? match[0] : null;
             const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
 
-            interaction.guild.members.fetch();
+            await interaction.guild.members.fetch();
             const roleMembers = interaction.guild.members.cache.filter(
                 (member) => member.roles.cache.has(selectedTeamRole.id)
             );
@@ -42,17 +42,26 @@ module.exports = {
             const memberCount = roleMembers.size;
             const memberCountString = memberCount + (memberCount === 1 ? " member" : " members");
 
-            const membersList = roleMembers.map((member) => `<@${member.id}>`).join(", ");
+            const membersList = roleMembers
+                .map((member) => {
+                    const regex = /.*?(?=\s|\|)/;
+                    const match = member.displayName.match(regex);
+                    let name = match ? match[0] : member.displayName;
+                    return name.charAt(0).toUpperCase() + name.slice(1);
+                })
+                // alphabetical order
+                .sort((a, b) => a.localeCompare(b))
+                .join(", ");
 
             const teamData = await fetchTeamData(teamNumber);
 
             const embed = createEmbed({
                 title: "Team Information",
-                description: `<@&${selectedTeamRole.id}>, from ${teamData.city || "some city"}, ${teamData.state_prov || "some state"} ${teamData.country || "some country"} has ${memberCountString} in this server.\n\n${membersList}`,
+                description: `<@&${selectedTeamRole.id}>, from ${teamData.city || "some city"}, ${teamData.state_prov || "some state"} (${teamData.country || "some country"}) has ${memberCountString} in this server.\n\n${membersList}`,
                 color: selectedTeamRole.color,
                 fields: [
                     {
-                        name: "Total Members:",
+                        name: "Total Members",
                         value: `${memberCount}`,
                         inline: true,
                     },
