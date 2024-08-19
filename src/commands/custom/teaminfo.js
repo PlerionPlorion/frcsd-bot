@@ -1,6 +1,10 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { createEmbed } = require("../../utils/embedBuilder");
 
+async function getTeamAvatarUrl(teamNumber) {
+  return require("../../utils/avatarURL")(teamNumber);
+}
+
 module.exports = {
   category: "custom",
   data: new SlashCommandBuilder()
@@ -15,6 +19,11 @@ module.exports = {
   async execute(interaction) {
     await interaction.deferReply();
     const selectedTeamRole = interaction.options.getRole("team");
+    const regex = /\d+/;
+
+    const match = selectedTeamRole.name.match(regex);
+    const teamNumber = match ? match[0] : null;
+    const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
 
     if (!selectedTeamRole.name.includes("|")) {
       interaction.editReply({
@@ -22,6 +31,7 @@ module.exports = {
         ephemeral: true,
       });
     } else {
+      interaction.guild.members.fetch();
       const roleMembers = interaction.guild.members.cache.filter((member) =>
         member.roles.cache.has(selectedTeamRole.id)
       );
@@ -34,7 +44,7 @@ module.exports = {
 
       const embed = createEmbed({
         title: "Team Information",
-        description: `Found ${memberCount} member(s) with the "${selectedTeamRole.name}" role.\n${membersList}`,
+        description: `Found ${memberCount} member(s) with the <@&${selectedTeamRole.id}> role.\n${membersList}`,
         color: selectedTeamRole.color,
         fields: [
           {
@@ -43,11 +53,12 @@ module.exports = {
             inline: true,
           },
           {
-            name: "Team",
-            value: `${selectedTeamRole.name}`,
+            name: "Team Number",
+            value: `${teamNumber}`,
             inline: true,
           },
         ],
+        thumbnailUrl: thumbnailUrl,
       });
 
       await interaction.editReply({ embeds: [embed] });
