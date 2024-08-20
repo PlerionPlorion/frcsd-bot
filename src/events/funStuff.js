@@ -6,10 +6,18 @@ const replyMap = {
 };
 
 const reactionMap = {
-    "fish": "🐟",
     "susan": "💻🐈",
     "cat": "🐈",
+    "🐟": "🐟",
+    "fish": "🐟",
+    "bear": "🐻",
+    "krill": "🦐",
     "issue": "☹",
+    "254": "🧀💨",
+    "1622": "🕷",
+    "359": "🏄‍♂️",
+    "🤓": "☝🤓",
+    "ackshually": "☝🤓",
 };
 
 const REPLY_COOLDOWN = 120_000;
@@ -23,10 +31,9 @@ module.exports = {
         if (message.author.bot) return;
 
         const now = Date.now();
-        
         for (const [keyword, url] of Object.entries(replyMap)) {
             if (message.content.toLowerCase().includes(keyword.toLowerCase())) {
-                if (now - lastReply > REPLY_COOLDOWN && Math.random() < 0.34) {
+                if (now - lastReply > REPLY_COOLDOWN || Math.random() < 0.34) {
                     lastReply = now;
                     setTimeout(async () => {
                         await message.reply(url);
@@ -37,14 +44,13 @@ module.exports = {
         }
         for (const [keyword, reaction] of Object.entries(reactionMap)) {
             if (message.content.toLowerCase().includes(keyword.toLowerCase())) {
-                if (now - lastReaction > REACT_COOLDOWN && Math.random() < 0.8) {
+                if (now - lastReaction > REACT_COOLDOWN || Math.random() < 0.7) {
                     lastReaction = now;
                     setTimeout(async () => {
                         for (const emoji of reaction) {
                             await message.react(emoji);
                         }
                     }, Math.random() * 3000);
-                    break;
                 }
             }
         }
