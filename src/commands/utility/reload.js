@@ -25,7 +25,7 @@ module.exports = {
 				.setAutocomplete(true))
         .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
 	async autocomplete(interaction) {
-		const focusedValue = interaction.options.getFocused();
+		const focusedValue = interaction.options.getFocused().trim().toLowerCase();
 		const choices = interaction.client.commands.map(command => command.data.name);
 		const filtered = choices.filter(choice => choice.startsWith(focusedValue));
 		await interaction.respond(

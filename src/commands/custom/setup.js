@@ -532,7 +532,21 @@ module.exports = {
                 .setName("team_number")
                 .setDescription("The team number")
                 .setRequired(true)
+                .setAutocomplete(true)
         ),
+    async autocomplete(interaction) {
+        const teamNumber = interaction.options.getFocused().trim();
+        if (isNaN(teamNumber) || teamNumber < 1) {
+            return interaction.respond([]);
+        }
+        const teamData = await fetchTeamData(teamNumber);
+        return interaction.respond([
+            {
+                name: `${teamNumber} | ${teamData.nickname}`,
+                value: teamNumber,
+            },
+        ]);
+    },
     async execute(interaction) {
         // Check if the user is not assigned to any team
         if (
