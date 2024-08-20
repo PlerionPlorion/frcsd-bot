@@ -33,7 +33,7 @@ module.exports = {
         const now = Date.now();
         for (const [keyword, url] of Object.entries(replyMap)) {
             if (message.content.toLowerCase().includes(keyword.toLowerCase())) {
-                if (now - lastReply > REPLY_COOLDOWN || Math.random() < 0.34) {
+                if (now - lastReply > REPLY_COOLDOWN && Math.random() < 0.34) {
                     lastReply = now;
                     setTimeout(async () => {
                         await message.reply(url);
