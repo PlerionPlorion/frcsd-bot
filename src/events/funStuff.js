@@ -13,9 +13,9 @@ const reactionMap = {
     "359": "🏄",
     "🤓": "☝🤓",
     "ackshually": "☝🤓",
-    "yippee": 1270243584150474772,
-    "terry": 1270243306051342359,
-    "jerome": 1270243291715207321,
+    "yippee": '<:yippee:1270243584150474772>',
+    "terry": '<:terry:1270243306051342359>',
+    "jerome": '<:jerome:1270243291715207321>',
 };
 
 module.exports = {
@@ -25,15 +25,20 @@ module.exports = {
 
         for (const [keyword, reaction] of Object.entries(reactionMap)) {
             const regex = new RegExp(`(?:^|[^a-zA-Z0-9])${keyword}(?:$|[^a-zA-Z0-9])`, 'i');
-            if (regex.test(message.content)) {
-                if (Math.random() < 0.5) {
-                    if (typeof reaction === "string") {
-                        for (const emoji of reaction) {
-                            await message.react(emoji);
-                        }
-                    } else if (!isNaN(reaction)) {
-                        await message.react(reaction);
+            if (Math.random() < 0.5 && regex.test(message.content)) {
+                let emojis = '';
+                for (let i = 0; i < reaction.length; i++) {
+                    const char = reaction.charAt(i);
+                    if (char === '<') {
+                        const newIndex = reaction.indexOf('>', i);
+                        await message.react(reaction.slice(i, newIndex+1));
+                        i = newIndex; // it will ++ at the end of the loop
+                    } else {
+                        emojis += char;
                     }
+                }
+                for (const emoji of emojis) {
+                    await message.react(emoji);
                 }
             }
         }
