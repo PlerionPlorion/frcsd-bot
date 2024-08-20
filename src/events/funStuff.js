@@ -26,7 +26,7 @@ module.exports = {
         for (const [keyword, reaction] of Object.entries(reactionMap)) {
             const regex = new RegExp(`(?:^|[^a-zA-Z0-9])${keyword}(?:$|[^a-zA-Z0-9])`, 'i');
             if (regex.test(message.content)) {
-                if (Math.random() < 0.2) {
+                if (Math.random() < 0.34) {
                     if (typeof reaction === "string") {
                         for (const emoji of reaction) {
                             await message.react(emoji);
