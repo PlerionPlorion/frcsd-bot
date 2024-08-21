@@ -1,6 +1,7 @@
 const { Events } = require("discord.js");
 
 const reactionMap = {
+    "beloved": "💖",
     "susan": "💻🐈",
     "cat": "🐈",
     "🐟": "🐟",
