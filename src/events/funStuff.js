@@ -1,6 +1,7 @@
 const { Events } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
+const { exec } = require("child_process");
 
 // Path to the reactionMap.json file
 const reactionMapPath = path.join(__dirname, "..", "reactionMap.json");
@@ -15,6 +16,34 @@ function loadReactionMap() {
     }
 }
 
+async function gitCommit() {
+    exec("git add " + reactionMapPath, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`exec error: ${error}`);
+            console.error(`stderr: ${stderr}`);
+            return;
+        }
+        console.log(`stdout: ${stdout}`);
+    });
+
+    exec('git commit -m "Update reactionMap.json"', (error, stdout, stderr) => {
+        if (error) {
+            console.error(`exec error: ${error}`);
+            return;
+        }
+        console.log(`stdout: ${stdout}`);
+        console.error(`stderr: ${stderr}`);
+    });
+
+    exec("git push origin main", (error, stdout, stderr) => {
+        if (error) {
+            console.error(`exec error: ${error}`);
+            return;
+        }
+        console.log(`stdout: ${stdout}`);
+        console.error(`stderr: ${stderr}`);
+    });
+}
 // Load the reactionMap
 let reactionMap = loadReactionMap();
 
@@ -66,13 +95,11 @@ module.exports = {
             if (commandArgs[0].toLowerCase() === "updatemap") {
                 const keyword = commandArgs[1];
                 const emoji = commandArgs[2];
-
-                const filePath = path.join(__dirname, "..", "reactionMap.json");
                 try {
                     reactionMap[keyword] = emoji;
 
                     fs.writeFileSync(
-                        filePath,
+                        reactionMapPath,
                         JSON.stringify(reactionMap, null, 2)
                     );
                     reactionMap = loadReactionMap();
@@ -80,6 +107,7 @@ module.exports = {
                     message.channel.send(
                         `Updated Keyword: ${keyword} with Emoji: ${emoji}`
                     );
+                    gitCommit();
                 } catch (error) {
                     console.error("Error reading reactionMap.json", error);
                 }
@@ -89,17 +117,18 @@ module.exports = {
                 try {
                     delete reactionMap[keywordToDelete];
 
-                    const filePath = path.join(
+                    const reactionMapPath = path.join(
                         __dirname,
                         "..",
                         "reactionMap.json"
                     );
                     fs.writeFileSync(
-                        filePath,
+                        reactionMapPath,
                         JSON.stringify(reactionMap, null, 2)
                     );
 
                     message.channel.send(`Deleted Keyword: ${keywordToDelete}`);
+                    gitCommit();
                 } catch (error) {
                     console.error("Error deleting keyword:", error);
                     message.channel.send(
@@ -108,8 +137,8 @@ module.exports = {
                 }
             }
             if (commandArgs[0].toLowerCase() === "showmap") {
-              const mapString = JSON.stringify(reactionMap, null, 2);
-              message.channel.send(`\`\`\`json\n${mapString}\n\`\`\``);
+                const mapString = JSON.stringify(reactionMap, null, 2);
+                message.channel.send(`\`\`\`json\n${mapString}\n\`\`\``);
             }
         }
     },
