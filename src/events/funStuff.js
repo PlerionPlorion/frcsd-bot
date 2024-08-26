@@ -1,7 +1,8 @@
 const { Events } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
-const { exec } = require("child_process");
+const util = require('util');
+const exec = util.promisify(require('child_process').exec);
 
 // Path to the reactionMap.json file
 const reactionMapPath = path.join(__dirname, "..", "reactionMap.json");
@@ -17,32 +18,19 @@ function loadReactionMap() {
 }
 
 async function gitCommit() {
-    exec("git add " + reactionMapPath, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`exec error: ${error}`);
-            console.error(`stderr: ${stderr}`);
-            return;
-        }
-        console.log(`stdout: ${stdout}`);
-    });
+    try {
+        await exec(`git add ${reactionMapPath}`);
+        console.log('Added changes to staging area.');
 
-    exec('git commit -m "Update reactionMap.json"', (error, stdout, stderr) => {
-        if (error) {
-            console.error(`exec error: ${error}`);
-            return;
-        }
-        console.log(`stdout: ${stdout}`);
-        console.error(`stderr: ${stderr}`);
-    });
+        await exec('git commit -m "Update reactionMap.json"');
+        console.log('Committed changes.');
 
-    exec("git push origin main", (error, stdout, stderr) => {
-        if (error) {
-            console.error(`exec error: ${error}`);
-            return;
-        }
-        console.log(`stdout: ${stdout}`);
-        console.error(`stderr: ${stderr}`);
-    });
+        await exec("git push origin main");
+        console.log('Pushed changes to remote.');
+    } catch (error) {
+        console.error(`exec error: ${error}`);
+        return;
+    }
 }
 // Load the reactionMap
 let reactionMap = loadReactionMap();
