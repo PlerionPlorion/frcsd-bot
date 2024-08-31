@@ -76,7 +76,6 @@ module.exports = {
         ) {
             const commandBody = message.content.slice(2);
             const commandArgs = commandBody.trim().split(/ +/);
-            // console.log("buh");
             if (commandArgs[0].toLowerCase() === "updatemap") {
                 const keyword = commandArgs[1];
                 const emoji = commandArgs[2];
