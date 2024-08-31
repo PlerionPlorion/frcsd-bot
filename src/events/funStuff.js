@@ -1,4 +1,4 @@
-const { Events } = require("discord.js");
+const { Events, PermissionsBitField } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
 const util = require('util');
@@ -6,6 +6,7 @@ const exec = util.promisify(require('child_process').exec);
 
 // Path to the reactionMap.json file
 const reactionMapPath = path.join(__dirname, "..", "reactionMap.json");
+let reactionMap = loadReactionMap();
 
 function loadReactionMap() {
     try {
@@ -17,23 +18,19 @@ function loadReactionMap() {
     }
 }
 
-async function gitCommit() {
+async function gitCommit(key, value) {
     try {
         await exec(`git add ${reactionMapPath}`);
-        console.log('Added changes to staging area.');
 
-        await exec('git commit -m "Update reactionMap.json"');
-        console.log('Committed changes.');
+        await exec(`git commit -m "Update reactionMap.json: ${key}: ${value}"`);
 
         await exec("git push origin main");
-        console.log('Pushed changes to remote.');
+        console.log(`Pushed changes to remote: ${key}: ${value}`);
     } catch (error) {
         console.error(`exec error: ${error}`);
         return;
     }
 }
-// Load the reactionMap
-let reactionMap = loadReactionMap();
 
 module.exports = {
     name: Events.MessageCreate,
@@ -75,7 +72,7 @@ module.exports = {
         if (
             message.content.startsWith("p?") &&
             !message.author.bot &&
-            message.member.permissions.has(BigInt("8"))
+            message.member.permissions.has(PermissionsBitField.Flags.Administrator)
         ) {
             const commandBody = message.content.slice(2);
             const commandArgs = commandBody.trim().split(/ +/);
@@ -95,7 +92,7 @@ module.exports = {
                     message.channel.send(
                         `Updated Keyword: ${keyword} with Emoji: ${emoji}`
                     );
-                    gitCommit();
+                    gitCommit(keyword, emoji);
                 } catch (error) {
                     console.error("Error reading reactionMap.json", error);
                 }
@@ -116,7 +113,7 @@ module.exports = {
                     );
 
                     message.channel.send(`Deleted Keyword: ${keywordToDelete}`);
-                    gitCommit();
+                    gitCommit(keyword, "Deleted");
                 } catch (error) {
                     console.error("Error deleting keyword:", error);
                     message.channel.send(
