@@ -101,7 +101,7 @@ async function createButtonMessage(teamNumber, roles) {
     const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
     const embed = createEmbed({
         title: "Team Assignment",
-        description: `Welcome <@&${teamRole.id}>!\nYou are the first of your team to join FRCSD`,
+        description: `Welcome <@&${teamRole.id}>!\nYou are the first of your team to join SDFRC`,
         color: primaryColorRole.color,
         fields: [
             {
