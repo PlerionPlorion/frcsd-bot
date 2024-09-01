@@ -27,8 +27,22 @@ module.exports = {
         }
 
         if (rolesList.length > 0) {
+            // Set presence before 6 hour loop
+            client.user.setPresence({
+                activities: [
+                    {
+                        name:
+                            "against " +
+                            rolesList[
+                                Math.floor(Math.random() * rolesList.length)
+                            ],
+                        type: 0,
+                        status: "online",
+                        afk: false,
+                    },
+                ],
+            });
             intervalId = setInterval(() => {
-                // Update the presence every 60 seconds (you can adjust this time)
                 client.user.setPresence({
                     activities: [
                         {
@@ -44,9 +58,10 @@ module.exports = {
                     ],
                 });
             }, 21600000);
-
+            // Reset timer on bot shutdown
             process.on("SIGINT", () => {
                 clearInterval(intervalId);
+                process.exit(0);
             });
         }
         // console.log("buh");
