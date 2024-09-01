@@ -9,18 +9,15 @@ module.exports = {
     once: true,
     async execute(client) {
         console.log(`Ready! Logged in as ${client.user.tag}`);
-
+        let intervalId;
         let rolesList = [];
 
         for await (const guild of client.guilds.cache.values()) {
             try {
                 // Iterate over each role in the guild
                 for (const role of guild.roles.cache.values()) {
-                    // Check if the role name includes " | "
                     if (role.name.includes(" | ")) {
-                        // Split the role name by " | " and take the first part (the number)
                         const [roleId] = role.name.split(" | ");
-                        // Add the role number to the list
                         rolesList.push(roleId);
                     }
                 }
@@ -30,22 +27,27 @@ module.exports = {
         }
 
         if (rolesList.length > 0) {
-            // const randomIndex = Math.floor(Math.random() * (rolesList.length - 1)) + 1;
+            intervalId = setInterval(() => {
+                // Update the presence every 60 seconds (you can adjust this time)
+                client.user.setPresence({
+                    activities: [
+                        {
+                            name:
+                                "against " +
+                                rolesList[
+                                    Math.floor(Math.random() * rolesList.length)
+                                ],
+                            type: 0,
+                            status: "online",
+                            afk: false,
+                        },
+                    ],
+                });
+            }, 21600000);
 
-            const randomIndex = Math.floor(Math.random() * rolesList.length);
-
-            client.user.setPresence({
-                activities: [
-                    {
-                        name: "against " + rolesList[randomIndex],
-                        type: 0, // enum: 0 = playing, 1 = streaming, 2 = listening, 3 = watching, 4 = custom, 5 = competing
-                        status: "online",
-                        afk: false,
-                    },
-                ],
+            process.on("SIGINT", () => {
+                clearInterval(intervalId);
             });
-        } else {
-            console.log("No roles found.");
         }
         // console.log("buh");
     },
