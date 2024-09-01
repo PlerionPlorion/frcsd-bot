@@ -11,8 +11,14 @@ module.exports = {
         console.log(`Ready! Logged in as ${client.user.tag}`);
         let intervalId;
         let rolesList = [];
+        // const guildID = '1231713772402643035' // test3
+        const guildID = '942815054271770654' // SDFRC
 
-        for await (const guild of client.guilds.cache.values()) {
+        const guild = client.guilds.cache.get(guildID);
+        if (!guild) {
+            console.error(`Guild with ID ${guildID} found.`);
+            return;
+        }
             try {
                 // Iterate over each role in the guild
                 for (const role of guild.roles.cache.values()) {
@@ -24,7 +30,7 @@ module.exports = {
             } catch (error) {
                 console.error(`Failed to process guild ${guild.id}: `, error);
             }
-        }
+        
 
         if (rolesList.length > 0) {
             // Set presence before 6 hour loop
