@@ -42,7 +42,7 @@ module.exports = {
                 `(?:^|[^a-zA-Z0-9])${keyword}(?:$|[^a-zA-Z0-9])`,
                 "i"
             );
-            if (Math.random() < 0.5 && regex.test(message.content)) {
+            if (Math.random() < Math.random()*Math.random() && regex.test(message.content)) {
                 let emojis = "";
                 for (let i = 0; i < reaction.length; i++) {
                     const char = reaction.charAt(i);
