@@ -11,7 +11,7 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
 		GatewayIntentBits.GuildMembers,
     ],
-}).on("debug", console.log).on("warn", console.log);
+});
 
 client.commands = new Collection();
 client.cooldowns = new Collection();
