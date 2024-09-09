@@ -41,8 +41,6 @@ module.exports = {
                         {
                             name: "against " + randomTeamNumber,
                             type: 0,
-                            status: "online",
-                            afk: false,
                             url: `https://thebluealliance.com/team/${randomTeamNumber}`,
                         },
                     ],
