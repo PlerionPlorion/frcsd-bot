@@ -1,45 +1,11 @@
-const { Events, PermissionsBitField } = require("discord.js");
-const { createEmbed } = require("../utils/embedBuilder");
-const fs = require("fs");
-const path = require("path");
-const util = require("util");
-const exec = util.promisify(require("child_process").exec);
-
-// Path to the reactionMap.json file
-const reactionMapPath = path.join(__dirname, "..", "reactionMap.json");
-let reactionMap = loadReactionMap();
-
-function loadReactionMap() {
-    try {
-        const rawData = fs.readFileSync(reactionMapPath, "utf8");
-        return JSON.parse(rawData);
-    } catch (error) {
-        console.error("Error loading reactionMap.json", error);
-        return {};
-    }
-}
-
-async function gitCommit(key, value) {
-    try {
-        await exec(`git add ${reactionMapPath}`);
-
-        await exec(
-            `git commit -m "Update reactionMap.json: ${key}: ${value}" --author="Server Admin <ruhmit@ruhmit.com>"`
-        );
-
-        await exec("git push origin main");
-        console.log(`Pushed changes to remote: ${key}: ${value}`);
-    } catch (error) {
-        console.error(`exec error: ${error}`);
-        return;
-    }
-}
+const { Events } = require("discord.js");
+const { loadReactionMap } = require("../utils/reactionutils");
 
 module.exports = {
     name: Events.MessageCreate,
     async execute(message) {
         if (message.author.bot) return;
-
+        const reactionMap = loadReactionMap();
         for (const [keyword, reaction] of Object.entries(reactionMap)) {
             const regex = new RegExp(
                 `(?:^|[^a-zA-Z0-9])${keyword}(?:$|[^a-zA-Z0-9])`,
@@ -73,90 +39,6 @@ module.exports = {
                         console.error("unknown emoji", error);
                     }
                 }
-            }
-        }
-        if (
-            message.content.startsWith("p?") &&
-            !message.author.bot &&
-            message.member.permissions.has(
-                PermissionsBitField.Flags.Administrator
-            )
-        ) {
-            const commandBody = message.content.slice(2);
-            const commandArgs = commandBody.trim().split(/ +/);
-            if (commandArgs[0].toLowerCase() === "updatemap") {
-                const keyword = commandArgs[1];
-                const emoji = commandArgs[2];
-                try {
-                    reactionMap[keyword] = emoji;
-
-                    fs.writeFileSync(
-                        reactionMapPath,
-                        JSON.stringify(reactionMap, null, 2)
-                    );
-                    reactionMap = loadReactionMap();
-
-                    message.channel.send(
-                        `Updated Keyword: ${keyword} with Emoji: ${emoji}`
-                    );
-                    gitCommit(keyword, emoji);
-                } catch (error) {
-                    console.error("Error reading reactionMap.json", error);
-                }
-            }
-            if (commandArgs[0].toLowerCase() === "delete") {
-                const keywordToDelete = commandArgs[1];
-                try {
-                    delete reactionMap[keywordToDelete];
-
-                    const reactionMapPath = path.join(
-                        __dirname,
-                        "..",
-                        "reactionMap.json"
-                    );
-                    fs.writeFileSync(
-                        reactionMapPath,
-                        JSON.stringify(reactionMap, null, 2)
-                    );
-
-                    message.channel.send(`Deleted Keyword: ${keywordToDelete}`);
-                    gitCommit(keyword, "Deleted");
-                } catch (error) {
-                    console.error("Error deleting keyword:", error);
-                    message.channel.send(
-                        `Failed to delete keyword: ${keywordToDelete}. Please try again.`
-                    );
-                }
-            }
-            if (commandArgs[0].toLowerCase() === "showmap") {
-                const mapString = JSON.stringify(reactionMap, null, 2);
-                message.channel.send(`\`\`\`json\n${mapString}\n\`\`\``);
-            }
-            if (commandArgs[0].toLowerCase() === "help") {
-                const embed = createEmbed({
-                    title: "Available Commands",
-                    description:
-                        "Here's a list of available commands",
-                    color: 16711680,
-                    fields: [
-                        {
-                            name: "p?updatemap <keyword> <emoji>",
-                            value: "Update the reaction map with a new keyword and emoji. (Admin only)",
-                            inline: false,
-                        },
-                        {
-                            name: "p?delete <keyword>",
-                            value: "Delete a keyword from the reaction map. (Admin only)",
-                            inline: false,
-                        },
-                        {
-                            name: "p?showmap",
-                            value: "Display the current reaction map. (Admin only)",
-                            inline: false,
-                        },
-                    ],
-                });
-                message.channel.send({ embeds: [embed] });
             }
         }
     },
