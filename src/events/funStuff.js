@@ -1,8 +1,9 @@
 const { Events, PermissionsBitField } = require("discord.js");
+const { createEmbed } = require("../utils/embedBuilder");
 const fs = require("fs");
 const path = require("path");
-const util = require('util');
-const exec = util.promisify(require('child_process').exec);
+const util = require("util");
+const exec = util.promisify(require("child_process").exec);
 
 // Path to the reactionMap.json file
 const reactionMapPath = path.join(__dirname, "..", "reactionMap.json");
@@ -22,7 +23,9 @@ async function gitCommit(key, value) {
     try {
         await exec(`git add ${reactionMapPath}`);
 
-        await exec(`git commit -m "Update reactionMap.json: ${key}: ${value}"`);
+        await exec(
+            `git commit -m "Update reactionMap.json: ${key}: ${value}" --author="Server Admin <ruhmit@ruhmit.com>"`
+        );
 
         await exec("git push origin main");
         console.log(`Pushed changes to remote: ${key}: ${value}`);
@@ -42,7 +45,10 @@ module.exports = {
                 `(?:^|[^a-zA-Z0-9])${keyword}(?:$|[^a-zA-Z0-9])`,
                 "i"
             );
-            if (Math.random() < Math.random()*Math.random() && regex.test(message.content)) {
+            if (
+                Math.random() < Math.random() * Math.random() &&
+                regex.test(message.content)
+            ) {
                 let emojis = "";
                 for (let i = 0; i < reaction.length; i++) {
                     const char = reaction.charAt(i);
@@ -72,7 +78,9 @@ module.exports = {
         if (
             message.content.startsWith("p?") &&
             !message.author.bot &&
-            message.member.permissions.has(PermissionsBitField.Flags.Administrator)
+            message.member.permissions.has(
+                PermissionsBitField.Flags.Administrator
+            )
         ) {
             const commandBody = message.content.slice(2);
             const commandArgs = commandBody.trim().split(/ +/);
@@ -123,6 +131,32 @@ module.exports = {
             if (commandArgs[0].toLowerCase() === "showmap") {
                 const mapString = JSON.stringify(reactionMap, null, 2);
                 message.channel.send(`\`\`\`json\n${mapString}\n\`\`\``);
+            }
+            if (commandArgs[0].toLowerCase() === "help") {
+                const embed = createEmbed({
+                    title: "Available Commands",
+                    description:
+                        "Here's a list of available commands",
+                    color: 16711680,
+                    fields: [
+                        {
+                            name: "p?updatemap <keyword> <emoji>",
+                            value: "Update the reaction map with a new keyword and emoji. (Admin only)",
+                            inline: false,
+                        },
+                        {
+                            name: "p?delete <keyword>",
+                            value: "Delete a keyword from the reaction map. (Admin only)",
+                            inline: false,
+                        },
+                        {
+                            name: "p?showmap",
+                            value: "Display the current reaction map. (Admin only)",
+                            inline: false,
+                        },
+                    ],
+                });
+                message.channel.send({ embeds: [embed] });
             }
         }
     },
