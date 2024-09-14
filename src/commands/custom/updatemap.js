@@ -1,9 +1,5 @@
 const { SlashCommandBuilder, PermissionsBitField } = require("discord.js");
-const {
-    loadReactionMap,
-    gitCommit,
-    reactionMapPath,
-} = require("../../utils/reactionutils");
+const { loadReactionMap, gitCommit, reactionMapPath } = require("../../utils/reactionutils");
 const fs = require("fs");
 
 module.exports = {
@@ -36,6 +32,7 @@ module.exports = {
                 ephemeral: true,
             });
         }
+
         let reactionMap = loadReactionMap();
         try {
             reactionMap[keyword] = emoji;
@@ -43,13 +40,33 @@ module.exports = {
                 reactionMapPath,
                 JSON.stringify(reactionMap, null, 2)
             );
-            await interaction.reply(
-                `Updated Keyword: ${keyword} with Emoji: ${emoji}`
-            );
-            gitCommit(keyword, emoji);
+
+            await interaction.reply({
+                content: `Updating Keyword: ${keyword} with Emoji: ${emoji}...`,
+                fetchReply: true,
+            });
+
+            // Attempt git commit and get success status
+            const success = await gitCommit(keyword, emoji);
+
+            // Edit the initial reply based on the success status
+            const replyMessage = await interaction.fetchReply();
+            if (success) {
+                await replyMessage.edit(
+                    `Successfully updated Keyword: ${keyword} with Emoji: ${emoji}`
+                );
+                await replyMessage.react("✅");
+            } else {
+                await replyMessage.edit(
+                    `Updated Keyword: ${keyword} but failed to push changes.`
+                );
+                await replyMessage.react("❌");
+            }
         } catch (error) {
             console.error("Error updating reactionMap.json", error);
-            await interaction.reply("Failed to update the reaction map.");
+            const replyMessage = await interaction.fetchReply();
+            await replyMessage.edit("Failed to update the reaction map.");
+            await replyMessage.react("❌");
         }
     },
 };

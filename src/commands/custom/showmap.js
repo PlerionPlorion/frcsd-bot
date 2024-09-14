@@ -3,10 +3,10 @@ const { loadReactionMap } = require("../../utils/reactionutils");
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName("showmap") // This is the slash command name
-        .setDescription("Display the current reaction map"), // Command description
+        .setName("showmap")
+        .setDescription("Display the current reaction map"),
     async execute(interaction) {
-        // This is the function executed when the command is used
+
         // Check if the user has administrator permissions
         if (
             !interaction.member.permissions.has(

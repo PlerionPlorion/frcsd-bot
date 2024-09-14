@@ -22,8 +22,10 @@ async function gitCommit(key, value) {
         await exec(`git commit -m "Update reactionMap.json: ${key}: ${value}" --author="Server Admin <ruhmit@ruhmit.com>"`);
         await exec("git push origin main");
         console.log(`Pushed changes to remote: ${key}: ${value}`);
+        return true;
     } catch (error) {
         console.error(`exec error: ${error}`);
+        return false;
     }
 }
 

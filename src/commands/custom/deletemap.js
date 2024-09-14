@@ -29,7 +29,9 @@ module.exports = {
                 ephemeral: true,
             });
         }
+
         let reactionMap = loadReactionMap();
+        
         // Check if the keyword exists and matches exactly
         if (reactionMap.hasOwnProperty(keywordToDelete)) {
             try {
@@ -38,13 +40,36 @@ module.exports = {
                     reactionMapPath,
                     JSON.stringify(reactionMap, null, 2)
                 ); // Update the reaction map file
-                await interaction.reply(`Deleted Keyword: ${keywordToDelete}`);
-                gitCommit(keywordToDelete, "Deleted"); // Push changes to git
+                
+                // Send an initial reply and store it in a variable
+                await interaction.reply({
+                    content: `Deleting Keyword: ${keywordToDelete}...`,
+                    fetchReply: true,
+                });
+
+                // Attempt git commit and get success status
+                const success = await gitCommit(keywordToDelete, "Deleted");
+
+                // Edit the initial reply based on the success status
+                const replyMessage = await interaction.fetchReply();
+                if (success) {
+                    await replyMessage.edit(
+                        `Successfully deleted Keyword: ${keywordToDelete}`
+                    );
+                    await replyMessage.react("✅");
+                } else {
+                    await replyMessage.edit(
+                        `Deleted Keyword: ${keywordToDelete}, but failed to push changes.`
+                    );
+                    await replyMessage.react("❌");
+                }
             } catch (error) {
                 console.error("Error deleting keyword:", error);
-                await interaction.reply(
+                const replyMessage = await interaction.fetchReply();
+                await replyMessage.edit(
                     `Failed to delete keyword: ${keywordToDelete}. Please try again.`
                 );
+                await replyMessage.react("❌");
             }
         } else {
             // If the keyword doesn't exist
