@@ -16,6 +16,7 @@ function loadReactionMap() {
     }
 }
 
+// git logic (the email is just there to be there)
 async function gitCommit(key, value) {
     try {
         await exec(`git add ${reactionMapPath}`);

@@ -22,6 +22,7 @@ module.exports = {
         const keyword = interaction.options.getString("keyword");
         const emoji = interaction.options.getString("emoji");
 
+        // Check for admin permissions
         if (
             !interaction.member.permissions.has(
                 PermissionsBitField.Flags.Administrator
@@ -33,6 +34,7 @@ module.exports = {
             });
         }
 
+        // Writing to reactionMap.json
         let reactionMap = loadReactionMap();
         try {
             reactionMap[keyword] = emoji;
