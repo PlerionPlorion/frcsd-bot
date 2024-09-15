@@ -191,7 +191,7 @@ async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
         const otherMember = interaction.guild.members.cache.find(member => member.roles.cache.has(teamRole.id) && member.id !== interaction.user.id);
         const notSdRole = interaction.guild.roles.cache.find(role => role.name === "Not SD") || false;
         await setNickname(interaction.member, nickname, teamNumber);
-        if (otherMember && notSdRole && interaction.member.roles.cache.has(notSdRole.id)) {
+        if (otherMember && notSdRole && otherMember.roles.cache.has(notSdRole.id)) {
             interaction.client.emit('newTeamAdded', teamRole);
             await interaction.reply({
                 embeds: [
