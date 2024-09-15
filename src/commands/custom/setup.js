@@ -185,6 +185,7 @@ async function addExistingRole(interaction, teamRole, nickname, teamNumber) {
     try {
         const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
         await interaction.guild.members.fetch();
+        await interaction.guild.roles.fetch();
         await interaction.member.roles.add(teamRole.id);
         // look for another user with the same role and check if they have the "Not SD" role
         const otherMember = interaction.guild.members.cache.find(member => member.roles.cache.has(teamRole.id) && member.id !== interaction.user.id);
