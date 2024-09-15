@@ -172,10 +172,6 @@ async function handleRoleAssignment(initialContext) {
     }
 }
 
-async function verifyTeam(interaction, teamRole) {
-    
-}
-
 /**
  * Adds an existing role to the member and sets their nickname.
  * @param {Interaction} interaction - The interaction object.
