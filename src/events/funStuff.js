@@ -12,7 +12,7 @@ module.exports = {
                 "i"
             );
             if (
-                Math.random() < Math.random() * Math.random() &&
+                Math.random() < 0.33 && //gambling!!!
                 regex.test(message.content)
             ) {
                 let emojis = "";

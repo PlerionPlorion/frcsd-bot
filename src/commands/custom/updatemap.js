@@ -1,5 +1,9 @@
 const { SlashCommandBuilder, PermissionsBitField } = require("discord.js");
-const { loadReactionMap, gitCommit, reactionMapPath } = require("../../utils/reactionutils");
+const {
+    loadReactionMap,
+    gitCommit,
+    reactionMapPath,
+} = require("../../utils/reactionutils");
 const fs = require("fs");
 
 module.exports = {
@@ -17,23 +21,11 @@ module.exports = {
                 .setName("emoji")
                 .setDescription("The emoji to associate with the keyword")
                 .setRequired(true)
-        ),
+        )
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
     async execute(interaction) {
         const keyword = interaction.options.getString("keyword");
         const emoji = interaction.options.getString("emoji");
-
-        // Check for admin permissions
-        if (
-            !interaction.member.permissions.has(
-                PermissionsBitField.Flags.Administrator
-            )
-        ) {
-            return interaction.reply({
-                content: "You do not have permission to use this command.",
-                ephemeral: true,
-            });
-        }
-
         // Writing to reactionMap.json
         let reactionMap = loadReactionMap();
         try {

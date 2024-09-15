@@ -41,7 +41,7 @@ module.exports = {
                         {
                             name: "against " + randomTeamNumber,
                             type: 0,
-                            url: `https://thebluealliance.com/team/${randomTeamNumber}`,
+                            // url: `https://thebluealliance.com/team/${randomTeamNumber}`,
                         },
                     ],
                 });

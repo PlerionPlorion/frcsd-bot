@@ -15,20 +15,10 @@ module.exports = {
                 .setName("keyword")
                 .setDescription("The keyword to delete")
                 .setRequired(true)
-        ),
+        )
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
     async execute(interaction) {
         const keywordToDelete = interaction.options.getString("keyword");
-
-        if (
-            !interaction.member.permissions.has(
-                PermissionsBitField.Flags.Administrator
-            )
-        ) {
-            return interaction.reply({
-                content: "You do not have permission to use this command.",
-                ephemeral: true,
-            });
-        }
 
         let reactionMap = loadReactionMap();
         
