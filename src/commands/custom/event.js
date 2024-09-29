@@ -14,8 +14,8 @@ module.exports = {
                 .setName("eventid")
                 .setDescription("The TBA event ID")
                 .setRequired(true)
-        ),
-        // .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageMessages),
+        )
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageMessages),
 
     async execute(interaction) {
         eventIdResponse = interaction.options.getString("eventid");
@@ -48,21 +48,33 @@ module.exports = {
 
 async function monitoredTeamList(client) {
     try {
-        // Get the guild
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) {
-            console.error(`Guild with ID ${guildId} not found.`);
-            return;
-        }
+        // // Get the guild
+        // const guild = client.guilds.cache.get(guildId);
+        // if (!guild) {
+        //     console.error(`Guild with ID ${guildId} not found.`);
+        //     return;
+        // }
 
-        // Iterate over each role in the guild
-        for (const role of guild.roles.cache.values()) {
-            if (role.name.includes(" | ")) {
-                const [roleId] = role.name.split(" | ");
-                monitoredTeams.push(roleId);
-            }
-        }
+        // // Iterate over each role in the guild
+        // for (const role of guild.roles.cache.values()) {
+        //     if (role.name.includes(" | ")) {
+        //         const [roleId] = role.name.split(" | ");
+        //         monitoredTeams.push(roleId);
+        //     }
+        // }
+        const specificTeams = [
+            "114", "1148", "1156", "1540", "1678", "1690",
+            "2046", "2073", "2288", "254", "2811", "2910",
+            "3256", "3310", "3476", "3478", "359", "3647",
+            "3663", "4270", "4499", "5199", "5419", "581",
+            "5817", "5940", "6036", "604", "6328", "6443",
+            "6619", "670", "6800", "694", "7157", "8033",
+            "8048", "841", "9084", "9442", "9496", "971",
+            "973"
+        ];
 
+        // Add all the specific teams to monitoredTeams
+        monitoredTeams.push(...specificTeams);
         // console.log(`Populated monitoredTeams list with ${monitoredTeams.length} teams`);
     } catch (error) {
         console.error(`Failed to populate monitoredTeams:`, error);
