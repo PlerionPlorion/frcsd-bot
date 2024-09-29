@@ -16,7 +16,7 @@ module.exports = {
 
         const guild = client.guilds.cache.get(guildID);
         if (!guild) {
-            console.error(`Guild with ID ${guildID} found.`);
+            console.error(`Guild with ID ${guildID} not found.`);
             return;
         }
         try {
