@@ -15,7 +15,7 @@ module.exports = {
                 .setDescription("The TBA event ID")
                 .setRequired(true)
         )
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageMessages),
 
     async execute(interaction) {
         eventIdResponse = interaction.options.getString("eventid");
