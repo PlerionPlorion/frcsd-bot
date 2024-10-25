@@ -44,93 +44,91 @@ module.exports = {
         } else {
             // Displaying existing lore entries
             try {
-                const entries = await loadLoreEntries();
-
-                if (entries.length === 0) {
-                    await interaction.reply({ content: 'No lore entries available.', ephemeral: true });
+                const loreEntries = await loadLoreEntries(); // Retrieve lore entries from your database
+                const entriesPerPage = 1; // Number of entries per page
+                let currentPage = 0; // Start on the first page
+        
+                const totalPages = Math.ceil(loreEntries.length / entriesPerPage);
+        
+                if (loreEntries.length === 0) {
+                    await interaction.reply({
+                        content: 'No lore entries found.',
+                        ephemeral: true,
+                    });
                     return;
                 }
-
-                const embeds = entries.map(entry => createEmbed({
-                    title: `Lore Entry: ${entry.id}`,
-                    description: entry.message,
-                    color: 0x00AE86,
-                    fields: [
-                        { name: 'Author', value: entry.username, inline: true },
-                        { name: 'Timestamp', value: new Date(entry.timestamp).toLocaleString(), inline: true }
-                    ]
-                }));
-
-                const buttonRow = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('prev')
-                            .setLabel('Previous')
-                            .setStyle(ButtonStyle.Primary),
-                        new ButtonBuilder()
-                            .setCustomId('next')
-                            .setLabel('Next')
-                            .setStyle(ButtonStyle.Success),
-                        new ButtonBuilder()
-                            .setCustomId('stop')
-                            .setLabel('Stop')
-                            .setStyle(ButtonStyle.Danger)
-                    );
-
-                let currentIndex = 0;
-
-                // Send the initial embed
-                const replyMessage = await interaction.reply({
-                    embeds: [embeds[currentIndex]],
-                    components: [buttonRow],
-                    fetchReply: true
-                });
-
-                // Create a message component collector to handle button interactions
-                const collector = replyMessage.createMessageComponentCollector({
-                    componentType: 'BUTTON',
-                    time: 60000 // 1 minute
-                });
-
-                collector.on('collect', async buttonInteraction => {
-                    console.log(`Button ${buttonInteraction.customId} clicked`);
-                
-                    // Check if the button interaction is from the same user
-                    if (buttonInteraction.user.id !== interaction.user.id) {
-                        await buttonInteraction.reply({ content: "You cannot control this interaction.", ephemeral: true });
-                        return;
-                    }
-                
-                    // Acknowledge the interaction
-                    await buttonInteraction.deferUpdate();
-                
-                    switch (buttonInteraction.customId) {
-                        case 'prev':
-                            currentIndex = (currentIndex - 1 + embeds.length) % embeds.length;
-                            break;
-                        case 'next':
-                            currentIndex = (currentIndex + 1) % embeds.length;
-                            break;
-                        case 'stop':
-                            collector.stop();
-                            await replyMessage.edit({ components: [] }); // Disable buttons
-                            return;
-                    }
-                
-                    // Update the original message with the new embed
-                    await replyMessage.edit({
-                        embeds: [embeds[currentIndex]]
+        
+                // Function to create and send the embed
+                const sendLorePage = async (page) => {
+                    const start = page * entriesPerPage;
+                    const end = start + entriesPerPage;
+                    const entriesToShow = loreEntries.slice(start, end);
+        
+                    const fields = entriesToShow.map(entry => ({
+                        name: entry.username,
+                        value: entry.message,
+                        inline: false,
+                    }));
+        
+                    const embed = createEmbed({
+                        title: 'Lore Entries',
+                        description: `Page ${page + 1} of ${totalPages}`,
+                        color: '#0099ff', // You can adjust this color
+                        fields: fields
                     });
-                });
+        
+                    const row = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('prev')
+                                .setLabel('Previous')
+                                .setStyle(ButtonStyle.Primary)
+                                .setDisabled(page === 0), // Disable if on the first page
+                            new ButtonBuilder()
+                                .setCustomId('next')
+                                .setLabel('Next')
+                                .setStyle(ButtonStyle.Primary)
+                                .setDisabled(page === totalPages - 1) // Disable if on the last page
+                        );
 
-                // End the collector after the timeout
-                collector.on('end', async () => {
-                    console.log("Collector ended, disabling buttons");
-                    await replyMessage.edit({
-                        components: [] // Disable buttons after collector ends
-                    });
-                });
+                    // If the interaction has already been replied, use editReply
+                    if (currentPage === 0) {
+                        await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+                    } else {
+                        await interaction.editReply({ embeds: [embed], components: [row] });
+                    }
+                };
+        
+                await sendLorePage(currentPage); // Send the initial page
+        
+                // Create a message collector to handle button interactions
+                const filter = (btnInt) => {
+                    return btnInt.user.id === interaction.user.id; // Only allow the original user to interact
+                };
+        
+                const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 });
+        
+                collector.on('collect', async (btnInt) => {
+                    await btnInt.deferUpdate(); // Acknowledge the button press
 
+                    // Disable buttons immediately to prevent multiple clicks
+                    btnInt.message.components[0].components.forEach(button => button.setDisabled(true));
+                    await btnInt.message.edit({ components: btnInt.message.components });
+
+                    if (btnInt.customId === 'prev') {
+                        currentPage = Math.max(currentPage - 1, 0);
+                    } else if (btnInt.customId === 'next') {
+                        currentPage = Math.min(currentPage + 1, totalPages - 1);
+                    }
+
+                    await sendLorePage(currentPage); // Send the updated page
+                });
+        
+                collector.on('end', () => {
+                    // Disable buttons after the collector ends
+                    interaction.editReply({ components: [] });
+                });
+        
             } catch (error) {
                 console.error(`Error fetching lore entries: ${error}`);
                 await interaction.reply({ content: 'An error occurred while fetching lore entries.', ephemeral: true });
