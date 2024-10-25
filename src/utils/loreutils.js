@@ -63,9 +63,24 @@ async function getLoreEntry(id) {
     return entries.find((e) => e.id === id);
 }
 
+// git logic (the email is just there to be there)
+async function gitCommit() {
+    try {
+        await exec(`git add ${loreFilePath}`);
+        await exec(`git commit -m "Update lore.json" --author="Server Admin <ruhmit@ruhmit.com>"`);
+        await exec("git push origin main");
+        console.log(`Pushed changes to remote`);
+        return true;
+    } catch (error) {
+        console.error(`exec error: ${error}`);
+        return false;
+    }
+}
+
 module.exports = {
     loadLoreEntries,
     saveLoreEntries,
     addLoreEntry,
     getLoreEntry,
+    gitCommit
 };
