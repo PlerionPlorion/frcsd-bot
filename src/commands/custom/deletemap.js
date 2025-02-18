@@ -5,7 +5,6 @@ const {
     reactionMapPath,
 } = require("../../utils/reactionutils");
 const fs = require("fs");
-const { category } = require("./createpoll");
 
 module.exports = {
     category: "custom",
