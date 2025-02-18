@@ -1,6 +1,5 @@
 const { SlashCommandBuilder, PermissionsBitField } = require("discord.js");
 const getLastMatch = require("../../utils/eventCall.js");
-const { category } = require("./createpoll.js");
 
 let guildId;
 let allSentMessages = {};

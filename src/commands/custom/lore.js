@@ -11,7 +11,6 @@ const {
     gitCommit,
 } = require("../../utils/loreutils");
 const { createEmbed } = require("../../utils/embedBuilder");
-const { category } = require("./createpoll");
 
 const PASTEBIN_API_KEY = require("../../../config.json").pastebinapi;
 
