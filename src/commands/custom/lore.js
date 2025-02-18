@@ -11,6 +11,7 @@ const {
     gitCommit,
 } = require("../../utils/loreutils");
 const { createEmbed } = require("../../utils/embedBuilder");
+const { category } = require("./createpoll");
 
 const PASTEBIN_API_KEY = require("../../../config.json").pastebinapi;
 
@@ -38,6 +39,7 @@ async function uploadToPastebin(content) {
 
 
 module.exports = {
+    category: "custom",
     data: new SlashCommandBuilder()
         .setName("lore")
         .setDescription("View or add lore to the database")

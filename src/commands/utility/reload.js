@@ -50,6 +50,10 @@ module.exports = {
 					content: message,
 				});
 			});
+            message += 'All commands reloaded!';
+				await interaction.editReply({
+					content: message,
+				});
 		} else {
 			const command = commands.get(commandName);
 

@@ -7,6 +7,7 @@ const {
 const fs = require("fs");
 
 module.exports = {
+    category: "custom",
     data: new SlashCommandBuilder()
         .setName("updatemap")
         .setDescription("Update the reaction map")

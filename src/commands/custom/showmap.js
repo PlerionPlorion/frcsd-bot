@@ -2,6 +2,7 @@ const { SlashCommandBuilder, PermissionsBitField } = require("discord.js");
 const { loadReactionMap } = require("../../utils/reactionutils");
 
 module.exports = {
+    category: "custom",
     data: new SlashCommandBuilder()
         .setName("showmap")
         .setDescription("Display the current reaction map")

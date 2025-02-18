@@ -1,11 +1,13 @@
 const { SlashCommandBuilder, PermissionsBitField } = require("discord.js");
 const getLastMatch = require("../../utils/eventCall.js");
+const { category } = require("./createpoll.js");
 
 let guildId;
 let allSentMessages = {};
 let monitoredTeams = [];
 let eventIdResponse;
 module.exports = {
+    category: "custom",
     data: new SlashCommandBuilder()
         .setName("eventmode")
         .setDescription("Starts event mode!")

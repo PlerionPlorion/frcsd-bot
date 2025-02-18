@@ -5,8 +5,10 @@ const {
     reactionMapPath,
 } = require("../../utils/reactionutils");
 const fs = require("fs");
+const { category } = require("./createpoll");
 
 module.exports = {
+    category: "custom",
     data: new SlashCommandBuilder()
         .setName("deletemap")
         .setDescription("Delete a keyword from the reaction map")
