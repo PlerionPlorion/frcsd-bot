@@ -39,7 +39,7 @@ const rest = new REST().setToken(token);
 
 		// The put method is used to fully refresh all commands in the guild with the current set
 		const data = await rest.put(
-			Routes.applicationGuildCommands(clientId, guildId),
+			Routes.applicationCommands(clientId, guildId),
 			{ body: commands },
 		);
 
@@ -47,7 +47,7 @@ const rest = new REST().setToken(token);
 		if (reloadCommand) {
 			await rest.put(
 				// GuildID is for "frcsd bot we so back" test server
-				Routes.applicationGuildCommand(clientId, 1270642179592814592, reloadCommand.id),
+				Routes.applicationCommand(clientId, 1270642179592814592, reloadCommand.id),
 				{ body: reloadCommand },
 			);
 		}
