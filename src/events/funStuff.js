@@ -4,7 +4,11 @@ const { loadReactionMap } = require("../utils/reactionutils");
 module.exports = {
     name: Events.MessageCreate,
     async execute(message) {
-        if (message.author.bot) return;
+        if (message.author.bot || message.author.id == 823233708185354241) { // Austen schizo
+            // Ignore messages from bots or other users
+            // console.log("Ignoring message from bot or other user");
+            return;
+        }
         const reactionMap = loadReactionMap();
         for (const [keyword, reaction] of Object.entries(reactionMap)) {
             const regex = new RegExp(
@@ -12,7 +16,7 @@ module.exports = {
                 "i"
             );
             if (
-                Math.random() < 0.33473832552839 && //gambling!!!
+                Math.random() < 0.334738325528396995 && //gambling!!!
                 regex.test(message.content)
             ) {
                 let emojis = "";
