@@ -23,7 +23,7 @@ module.exports = {
                 .setDescription("The emoji to associate with the keyword")
                 .setRequired(true)
         )
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageMessages),
     async execute(interaction) {
         const keyword = interaction.options.getString("keyword");
         const emoji = interaction.options.getString("emoji");

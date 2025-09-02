@@ -17,7 +17,7 @@ module.exports = {
                 .setDescription("The keyword to delete")
                 .setRequired(true)
         )
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageMessages),
     async execute(interaction) {
         const keywordToDelete = interaction.options.getString("keyword");
 

@@ -6,7 +6,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName("showmap")
         .setDescription("Display the current reaction map")
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageRoles),
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageMessages),
     async execute(interaction) {
         // Convert the reaction map object to a readable JSON string
         let reactionMap = loadReactionMap();
