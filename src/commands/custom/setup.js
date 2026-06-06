@@ -7,6 +7,8 @@ const {
 const { betterColor } = require("../../utils/colorUtil");
 const { createEmbed } = require("../../utils/embedBuilder");
 
+const DEFAULT_ROLE_COLOR = "#808080";
+
 async function getTeamAvatarUrl(teamNumber) {
     return require("../../utils/avatarURL")(teamNumber);
 }
@@ -38,9 +40,14 @@ async function createRoles(initialContext, apiData) {
         const position = role ? role.position+1 : 0;
         const teamRole = await interaction.guild.roles.create({
             name: `${teamNumber} | ${teamName}`,
+            color: DEFAULT_ROLE_COLOR,
             position: position,
             reason: "Team Assignment | PatriBOT"
         });
+
+        if (!primaryColor || !secondaryColor) {
+            return { teamRole };
+        }
 
         const primaryColorRole = await interaction.guild.roles.create({
             name: `${teamNumber} | ${teamName} Primary`,
@@ -71,45 +78,58 @@ async function createRoles(initialContext, apiData) {
 async function createButtonMessage(teamNumber, roles) {
     const { teamRole, primaryColorRole, secondaryColorRole } = roles;
 
-    const primaryButton = new ButtonBuilder()
-        .setCustomId("primary")
-        .setLabel("Primary")
-        .setStyle(ButtonStyle.Success);
-
-    const secondaryButton = new ButtonBuilder()
-        .setCustomId("secondary")
-        .setLabel("Secondary")
-        .setStyle(ButtonStyle.Primary);
-
     const customButton = new ButtonBuilder()
         .setCustomId("custom")
         .setLabel("Custom")
         .setStyle(ButtonStyle.Secondary);
+
+    const grayButton = new ButtonBuilder()
+        .setCustomId("gray")
+        .setLabel("Gray")
+        .setStyle(ButtonStyle.Primary);
 
     const cancelButton = new ButtonBuilder()
         .setCustomId("cancel")
         .setLabel("Cancel")
         .setStyle(ButtonStyle.Danger);
 
-    const row = new ActionRowBuilder().addComponents(
-        primaryButton,
-        secondaryButton,
-        customButton,
-        cancelButton
-    );
+    const row = new ActionRowBuilder();
+    const fields = [];
+    let embedColor = teamRole.color;
+
+    if (primaryColorRole && secondaryColorRole) {
+        const primaryButton = new ButtonBuilder()
+            .setCustomId("primary")
+            .setLabel("Primary")
+            .setStyle(ButtonStyle.Success);
+
+        const secondaryButton = new ButtonBuilder()
+            .setCustomId("secondary")
+            .setLabel("Secondary")
+            .setStyle(ButtonStyle.Primary);
+
+        row.addComponents(primaryButton, secondaryButton, customButton, cancelButton);
+        embedColor = primaryColorRole.color;
+        fields.push({
+            name: "Select Color:",
+            value: `<@&${primaryColorRole.id}>\n<@&${secondaryColorRole.id}>\nA Custom Hex?`,
+            inline: false,
+        });
+    } else {
+        row.addComponents(customButton, grayButton, cancelButton);
+        fields.push({
+            name: "Select Color:",
+            value: "FRC Colors is unavailable right now.\nEnter a custom hex color or use standard gray.",
+            inline: false,
+        });
+    }
 
     const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
     const embed = createEmbed({
         title: "Team Assignment",
         description: `Welcome <@&${teamRole.id}>!\nYou are the first of your team to join SDFRC`,
-        color: primaryColorRole.color,
-        fields: [
-            {
-                name: "Select Color:",
-                value: `<@&${primaryColorRole.id}>\n<@&${secondaryColorRole.id}>\nA Custom Hex?`,
-                inline: false,
-            },
-        ],
+        color: embedColor,
+        fields,
         thumbnailUrl: thumbnailUrl,
     });
 
@@ -148,13 +168,11 @@ async function handleRoleAssignment(initialContext) {
     const teamColors = await fetchTeamColors(teamNumber);
     const apiData = {
         teamName: teamData.nickname,
-        primaryColor: teamColors.primaryHex,
-        secondaryColor: teamColors.secondaryHex
+        primaryColor: teamColors?.primaryHex,
+        secondaryColor: teamColors?.secondaryHex
     };
 
-    // we dont need to check secondary 
-    // since if we have primary we have secondary
-    if (apiData.teamName && apiData.primaryColor) {
+    if (apiData.teamName) {
         const roles = await createRoles(initialContext, apiData);
         const buttonMessage = await createButtonMessage(teamNumber, roles);
         return {
@@ -162,10 +180,10 @@ async function handleRoleAssignment(initialContext) {
             roles,
         };
     } else {
-        console.error(`Team data: ${apiData.teamName}, colors: ${apiData.primaryColor}`);
+        console.error(`Team data not found for ${teamNumber}`);
         return {
             interactionReply: await interaction.reply({
-                content: `Team data or colors not found for ${teamNumber}.`,
+                content: `Team data not found for ${teamNumber}.`,
                 ephemeral: true,
             }),
         };
@@ -281,6 +299,7 @@ async function handleConfirmation(initialContext, interactionReply, roles) {
         switch (confirmation.customId) {
             case "primary":
             case "secondary":
+            case "gray":
                 await setRoleColor(initialContext, roles, confirmation, confirmation.customId);
                 break;
             case "custom":
@@ -294,7 +313,7 @@ async function handleConfirmation(initialContext, interactionReply, roles) {
     } catch (e) {
         console.error('\n\n\n',e,'\n\n\n');
 
-        for (const role of Object.values(roles)) {
+        for (const role of Object.values(roles || {})) {
             role.delete('An error occurred during setup')
                 .catch(console.error);
         }
@@ -340,11 +359,13 @@ async function setRoleColor(initialContext, roles, confirmation, primaryOrSecond
     const desiredColor =
         primaryOrSecondary === "primary"
             ? primaryColorRole.color
-            : secondaryColorRole.color;
+            : primaryOrSecondary === "secondary"
+                ? secondaryColorRole.color
+                : DEFAULT_ROLE_COLOR;
     await teamRole.setColor(desiredColor);
     
-    await primaryColorRole.delete();
-    await secondaryColorRole.delete();
+    await primaryColorRole?.delete();
+    await secondaryColorRole?.delete();
 
     await member.roles.add(teamRole);
     await setNickname(member, nickname, teamNumber);
@@ -381,8 +402,8 @@ async function handleCustomColor(initialContext, roles, confirmation) {
     const { teamRole, primaryColorRole, secondaryColorRole } = roles;
     const thumbnailUrl = await getTeamAvatarUrl(teamNumber);
 
-    await primaryColorRole.delete();
-    await secondaryColorRole.delete();
+    await primaryColorRole?.delete();
+    await secondaryColorRole?.delete();
 
     const embed = createEmbed({
         title: "Custom Color",
@@ -493,8 +514,8 @@ async function handleCustomColor(initialContext, roles, confirmation) {
  */
 async function handleCancelOperation(initialContext, interactionReply, roles, confirmation) {
     roles.teamRole.delete();
-    roles.primaryColorRole.delete();
-    roles.secondaryColorRole.delete();
+    roles.primaryColorRole?.delete();
+    roles.secondaryColorRole?.delete();
     const thumbnailUrl = await getTeamAvatarUrl(initialContext.teamNumber);
     const embed = createEmbed({
         title: "Operation Cancelled",
@@ -537,6 +558,9 @@ module.exports = {
             return interaction.respond([]);
         }
         const teamData = await fetchTeamData(teamNumber);
+        if (!teamData.nickname) {
+            return interaction.respond([]);
+        }
         return interaction.respond([
             {
                 name: `${teamNumber} | ${teamData.nickname}`,
@@ -605,6 +629,9 @@ module.exports = {
 
         // Handle role assignment and update the roles context object
         const {interactionReply, roles} = await handleRoleAssignment(initialContext);
+        if (!roles) {
+            return;
+        }
 
         // Pass the context objects to handleConfirmation
         await handleConfirmation(initialContext, interactionReply, roles);
